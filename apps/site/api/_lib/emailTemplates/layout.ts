@@ -1,6 +1,6 @@
 /** The HOP-branded shell shared by the site's owner-notification emails. Every value is HTML-escaped. */
 
-const SITE_URL = 'https://theconcierge.life'
+const SITE_URL = 'https://www.hopserves.com'
 const FONT_SANS = "Inter, 'Helvetica Neue', Arial, sans-serif"
 
 export function escapeHtml(s: string): string {

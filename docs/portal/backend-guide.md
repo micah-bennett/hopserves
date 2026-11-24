@@ -118,7 +118,31 @@ To put a fresh copy back (for example, to reset after a walkthrough), run the re
 ALLOW_DEMO_SEED=1 DEMO_PASSWORD="…10+ characters…" DATABASE_URL="postgres://…" npm run hop:seed-demo
 ```
 
-## The five Vercel projects (team: AY Projects)
+## Moving to the Hop Services Team and hopserves.com subdomains (2026-11)
+
+Everything (the six HOP projects, `waymark-mobility`, and the domains `hopserves.com`,
+`theconcierge.life` and `waymarkmobility.com`) moves from the personal **AY Projects** account
+into the shared **Hop Services Team**. Waymark's code stays in its own repo; only the Vercel team
+is shared. The team is a paid Pro plan after the trial, so a card must be on it before the trial
+ends or deploys stop.
+
+1. **Move each project.** AY Projects → project → Settings → General → Transfer Project → Hop
+   Services Team. Env vars, deployments and attached domains go with it. If asked, let the team's
+   Vercel GitHub app see `micah-bennett/hopserves`.
+2. **Move leftover domains.** AY Projects → Domains → ⋯ next to each one → Move → Hop Services
+   Team. The domains are "Third Party" (their DNS is at GoDaddy), so GoDaddy needs no change
+   unless Vercel asks for a TXT verification record.
+3. **Add the app subdomains.** In each app project → Settings → Domains → Add:
+   `client.hopserves.com` (hop-client), `console.hopserves.com`, `rep.hopserves.com`,
+   `facility.hopserves.com`, `concierge.hopserves.com`. At GoDaddy → hopserves.com → DNS, add a
+   CNAME for each name (`client`, `console`, `rep`, `facility`, `concierge`) pointing to
+   `cname.vercel-dns.com`.
+4. **Point the links at the new addresses.** Update `APP_URL`, `CLIENT_URL`, `CONSOLE_URL`,
+   `REP_URL`, `FACILITY_URL` and `CONCIERGE_URL` in all five apps, and the `VITE_*_URL` values
+   on `hop_services`. Redeploy every project.
+5. The old `*.vercel.app` addresses keep working, so nothing breaks while DNS catches up.
+
+## The Vercel projects (team: Hop Services Team; moving from AY Projects)
 
 | Project | Folder (Root Directory) | Live address |
 |---|---|---|
@@ -166,7 +190,7 @@ Until this is done, inviting someone from the Console Team screen and "Forgot pa
 on the live apps.
 
 ### Changing an app's address (custom domain)
-Vercel → project → Settings → Domains → Add (for example `console.theconcierge.life`). Then update
+Vercel → project → Settings → Domains → Add (for example `console.hopserves.com`). Then update
 that address in all five apps' `*_URL` settings and the site's `VITE_*_URL`, and redeploy.
 
 ### Rolling back one app

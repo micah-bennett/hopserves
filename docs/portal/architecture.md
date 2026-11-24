@@ -212,7 +212,7 @@ The server enforces this with two zod schemas, `consolePatchJobSchema` and
 
 | Vercel project | Root Directory | Framework | Env vars |
 |---|---|---|---|
-| `theconcierge` (existing) | `apps/site` | Vite | `DATABASE_URL`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `VITE_STAFF_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL`, `VITE_FACILITY_URL` |
+| `hop_services` (www.hopserves.com) | `apps/site` | Vite | `DATABASE_URL`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `VITE_STAFF_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL`, `VITE_FACILITY_URL` |
 | `hop-staff` | `apps/staff` | Next.js | shared set ↓ + `APP_URL` |
 | `hop-console` | `apps/console` | Next.js | shared set + `APP_URL`, `STAFF_URL`, `REP_URL`, `FACILITY_URL` (for invite links) |
 | `hop-rep` | `apps/rep` | Next.js | shared set + `APP_URL`, optional `BLOB_READ_WRITE_TOKEN` |

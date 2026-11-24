@@ -47,7 +47,9 @@ deliberately duplicates as little as possible, because duplicated facts go stale
   and the rest) still exist in Neon, unused. Don't read from or write to them. New Portal tables
   use the `portal_` prefix. Everything old is in git history before the `portal-rebuild` branch
   if leadership asks for it.
-- **Vercel Hobby plan.** The 12-serverless-function cap is per project. Each Next.js app needs
+- **Vercel: Hop Services Team.** All projects (and Waymark's) live in the shared Hop Services
+  Team, moved from the personal AY Projects account in 2026-11. Keep the old Hobby habit anyway:
+  the 12-serverless-function cap is per project. Each Next.js app needs
   only a handful of route handlers, so there's plenty of headroom. If an app ever approaches it,
   consolidate with an `?action=` dispatch rather than proposing a Pro upgrade.
 
