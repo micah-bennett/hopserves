@@ -120,8 +120,8 @@ ALLOW_DEMO_SEED=1 DEMO_PASSWORD="…10+ characters…" DATABASE_URL="postgres://
 
 ## Moving to the Hop Services Team and hopserves.com subdomains (2026-11)
 
-Everything (the six HOP projects, `waymark-mobility`, and the domains `hopserves.com`,
-`theconcierge.life` and `waymarkmobility.com`) moves from the personal **AY Projects** account
+Everything (the six HOP projects, `waymark-mobility`, and the domains `hopserves.com` and
+`waymarkmobility.com`) moved (done 2026-11-24) from the personal **AY Projects** account
 into the shared **Hop Services Team**. Waymark's code stays in its own repo; only the Vercel team
 is shared. The team is a paid Pro plan after the trial, so a card must be on it before the trial
 ends or deploys stop.
@@ -159,8 +159,7 @@ ends or deploys stop.
 All six are connected to the GitHub repo. A push to `main` deploys to production, and a push to
 any other branch makes a preview. If a site deploy ever shows "Ready" but the live site doesn't
 change, an earlier rollback has paused auto-promotion: Deployments → the new one → ⋯ → Promote to
-Production. (`theconcierge.life` is not attached to any project right now; it shows Vercel's
-DEPLOYMENT_NOT_FOUND page.) Every push rebuilds all six.
+Production. Every push rebuilds all six.
 
 **Settings each Portal app has** (Vercel → project → Settings → Environment Variables):
 - `DATABASE_URL`: the Neon database.

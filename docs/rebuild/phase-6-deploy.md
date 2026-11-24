@@ -34,7 +34,7 @@ if the operator has logged it in and approves.
    - Env vars per `architecture.md` → Deployments. `SESSION_HASH_SECRET` should be a new random
      64-hex value, the same in all four.
    - Set the Ignored Build Step command from `architecture.md` → Deployments.
-   - Optionally add custom domains (for example `staff.theconcierge.life`). If so, update every
+   - Optionally add custom domains (for example `client.hopserves.com`). If so, update every
      `*_URL` env var.
 5. **Wire the links:** set `VITE_STAFF_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL` and
    `VITE_FACILITY_URL` on the site, and `STAFF_URL`, `REP_URL`, `FACILITY_URL` and `APP_URL` on
