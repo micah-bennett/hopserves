@@ -18,7 +18,7 @@ for the four Portal apps. Until then, only the landing site section applies.
   | `hop-console` | `apps/console` | Concierge Console (created in Phase 6) |
   | `hop-rep` | `apps/rep` | Concierge Rep App (created in Phase 6) |
   | `hop-facility` | `apps/facility` | Facility View (created in Phase 6) |
-  | `hop-concierge` | `apps/concierge` | Concierge Portal for individual customers (added in v2.1, 2026-11) |
+  | `concierge_account` | `apps/concierge` | Concierge Portal for individual customers (added in v2.1, 2026-11) |
 
 - The old `theconcierge-staff` project (ConciergeHub, on the `staff-portal` branch) is being
   retired. Leave it alone until Phase 6 says to delete it.
@@ -59,11 +59,11 @@ writes a new database column; without it, new requests and the Facility View wou
    requests. Safe to run twice; nothing is deleted.
 2. **Merge the code to `main`** (all projects redeploy).
 3. **Create the sixth Vercel project** for the Concierge Portal: Vercel → Add New → Project →
-   import the same repo → name it `hop-concierge` → **Root Directory** `apps/concierge` (leave
+   import the same repo → name it `concierge_account` → **Root Directory** `apps/concierge` (leave
    "Include files outside the root directory" on) → Framework **Next.js**. Before the first
    deploy, add its settings: `DATABASE_URL`, `SESSION_HASH_SECRET` (the same value as the other
    apps), `RESEND_API_KEY`, and `APP_URL` = its own address (for example
-   `https://hop-concierge.vercel.app`). Deploy.
+   `https://concierge.hopserves.com`). Deploy.
 4. **Tell the other apps where it is**: add `CONCIERGE_URL` = that address to `hop-client`,
    `hop-console`, `hop-rep` and `hop-facility` (used for the "this account is for the Concierge
    Portal" message), and `VITE_CONCIERGE_URL` = the same address to the site (`hop_services`).
@@ -154,7 +154,7 @@ ends or deploys stop.
 | `hop-console` | `apps/console` | https://hop-console.vercel.app |
 | `hop-rep` | `apps/rep` | https://hop-rep.vercel.app |
 | `hop-facility` | `apps/facility` | https://hop-facility.vercel.app |
-| `hop-concierge` | `apps/concierge` | Not created yet (v2.1 step 3 above) |
+| `concierge_account` | `apps/concierge` | https://concierge.hopserves.com (once DNS is set; until then https://theconcierge-delta.vercel.app) |
 
 All six are connected to the GitHub repo. A push to `main` deploys to production, and a push to
 any other branch makes a preview. If a site deploy ever shows "Ready" but the live site doesn't
@@ -185,7 +185,7 @@ Concierge pages.
 ### Adding the email key to the Portal apps (one time)
 1. Vercel → `hop_services` → Settings → Environment Variables → `RESEND_API_KEY` → copy the value
    (or create a new key at resend.com → API Keys).
-2. For each of `hop-client`, `hop-console`, `hop-rep`, `hop-facility` and `hop-concierge`: Settings → Environment
+2. For each of `hop-client`, `hop-console`, `hop-rep`, `hop-facility` and `concierge_account`: Settings → Environment
    Variables → Add → Key `RESEND_API_KEY`, paste the value, tick Production and Preview → Save.
 3. Redeploy each one: Deployments → the top one → ⋯ → Redeploy.
 

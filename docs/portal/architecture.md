@@ -217,7 +217,7 @@ The server enforces this with two zod schemas, `consolePatchJobSchema` and
 | `hop-console` | `apps/console` | Next.js | shared set + `APP_URL`, `STAFF_URL`, `REP_URL`, `FACILITY_URL` (for invite links) |
 | `hop-rep` | `apps/rep` | Next.js | shared set + `APP_URL`, optional `BLOB_READ_WRITE_TOKEN` |
 | `hop-facility` | `apps/facility` | Next.js | shared set + `APP_URL` |
-| `hop-concierge` | `apps/concierge` | Next.js | shared set + `APP_URL` |
+| `concierge_account` | `apps/concierge` | Next.js | shared set + `APP_URL` |
 
 The shared set is `DATABASE_URL`, `SESSION_HASH_SECRET` and `RESEND_API_KEY`, the same values in
 every project.
