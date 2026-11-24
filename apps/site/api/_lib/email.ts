@@ -5,7 +5,7 @@ import type { InstantRequest } from './requestValidation.js'
 import { inquiryOwnerNotificationTemplate } from './emailTemplates/inquiryOwnerNotification.js'
 import { instantRequestOwnerNotificationTemplate } from './emailTemplates/instantRequestOwnerNotification.js'
 
-const FROM = 'The Concierge <requests@theconcierge.life>'
+const FROM = 'HOP <requests@hopserves.com>'
 const NOTIFY_EMAIL = 'micah@hvconcierge.com'
 
 function client(): { resend: Resend; notifyTo: string } {

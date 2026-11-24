@@ -141,6 +141,9 @@ ends or deploys stop.
    `REP_URL`, `FACILITY_URL` and `CONCIERGE_URL` in all five apps, and the `VITE_*_URL` values
    on `hop_services`. Redeploy every project.
 5. The old `*.vercel.app` addresses keep working, so nothing breaks while DNS catches up.
+6. **Email sender.** All emails now come from `requests@hopserves.com`. In resend.com → Domains,
+   `hopserves.com` must show **Verified** (add the DNS records Resend lists at GoDaddy), or every
+   email (contact-form alerts, invites, password resets) fails to send.
 
 ## The Vercel projects (team: Hop Services Team; moving from AY Projects)
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 
-const FROM = "HOP <requests@theconcierge.life>";
+const FROM = "HOP <requests@hopserves.com>";
 const REPLY_TO = "micah@hvconcierge.com";
 
 function esc(s: string): string {
