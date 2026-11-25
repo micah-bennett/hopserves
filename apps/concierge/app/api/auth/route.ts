@@ -4,7 +4,7 @@ import { createProfileOnSignup } from "@/lib/server/profile";
 
 export const dynamic = "force-dynamic";
 
-// GET ?action=me · POST ?action=login|logout|signup|set-password|forgot
+// GET ?action=me · POST ?action=login|verify-code|resend-code|logout|signup|set-password|forgot
 // See packages/shared/src/server/auth.ts. Sign-up here creates a "customer" with no facility, so
 // nothing a concierge customer does can ever reach Facility View. The sign-up form then saves the
 // optional address and "How did you hear about us?" with PUT /api/me (already signed in by then).

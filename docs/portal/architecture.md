@@ -87,6 +87,20 @@ bundle.
   `hop_portal_facility_admin` or `hop_portal_customer`. (On localhost every app shares one cookie jar, because cookies
   ignore the port, so a single name would let signing in to one app sign you out of another.) Only `HMAC-SHA256(token, SESSION_HASH_SECRET)` is stored, in
   `portal_sessions`. The TTL is 30 days.
+- **Email sign-in codes (v2.2, 2026-11)**: a correct password never starts a session by itself.
+  `?action=login` answers `{ needsCode, challenge, sentTo }` and Resend emails a 6-digit code;
+  `?action=verify-code { challenge, code }` starts the session. Sign-up (HOP Client staff and
+  Concierge customers) works the same way, so an account is only usable once its email is
+  proven. `?action=resend-code` sends a fresh code for the same challenge.
+  - The challenge is 32 random bytes held by the browser; the code is bound to it. Only
+    `HMAC(challenge)` and `HMAC(challenge + code)` are stored, in `portal_login_codes`.
+  - A code lasts 10 minutes, is single use, and dies after 5 wrong guesses. Resend: 30 s apart,
+    5 sends per challenge. At most 6 new challenges per user per 15 minutes. Asking for a new
+    code retires the previous one.
+  - A first successful code sets `portal_users.email_verified_at`. Invite and reset links
+    (`/set-password`) sign in directly, because the emailed link already proves the inbox.
+  - No bypass: if Resend can't send, sign-in fails with a 503, and `@demo.hop` accounts can't sign in.
+  - UI: `@hop/shared/ui/CodeStep`, used by `LoginScreen` and both `SignupForm`s.
   - Lockout: 8 failed attempts lock the account for 15 minutes.
   - Passwords: bcrypt cost 12, minimum length 10.
   - Each app has its own domain, so each app has its own cookie. One person can't be signed into

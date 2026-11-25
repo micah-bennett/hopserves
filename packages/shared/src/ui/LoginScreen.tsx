@@ -1,9 +1,11 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { ApiError, authApi } from "../client";
+import { ApiError, authApi, type CodeChallenge } from "../client";
+import { CodeStep } from "./CodeStep";
 
 /**
- * Sign-in screen shared by all four apps. On success it goes to `next` (default "/").
+ * Sign-in screen shared by all the Portal apps. A correct password emails a 6-digit code (CodeStep);
+ * the session starts once it's entered, then it goes to `next` (default "/").
  * A user of another role gets "This account is for the …" with a link to their app.
  */
 export function LoginScreen({
@@ -22,6 +24,7 @@ export function LoginScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ text: string; appUrl?: string | null } | null>(null);
   const [mode, setMode] = useState<"login" | "forgot" | "sent">("login");
+  const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -32,15 +35,29 @@ export function LoginScreen({
         await authApi.forgot(email);
         setMode("sent");
       } else {
-        await authApi.login(email, password);
-        window.location.href = next;
-        return;
+        setChallenge(await authApi.login(email, password));
+        setPassword("");
       }
     } catch (err) {
       const body = err instanceof ApiError ? err.body : {};
       setError({ text: err instanceof Error ? err.message : "Something went wrong", appUrl: (body.appUrl as string | null) ?? null });
     }
     setBusy(false);
+  }
+
+  if (challenge) {
+    return (
+      <CodeStep
+        challenge={challenge}
+        onVerified={() => {
+          window.location.href = next;
+        }}
+        onRestart={() => {
+          setChallenge(null);
+          setBusy(false);
+        }}
+      />
+    );
   }
 
   return (

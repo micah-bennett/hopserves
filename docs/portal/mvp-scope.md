@@ -28,6 +28,7 @@ each screen reads the database, or says "Coming soon" with a "Tell me when" butt
 |---|---|
 | Sign in / out, per-app role check, wrong-app message with a link to the right app | Real |
 | Lockout after 8 failed attempts, password reset by email, invite links (set-password) | Real (needs `RESEND_API_KEY` on each app) |
+| 6-digit code emailed at every sign-in and sign-up (all Portal apps) | Real (v2.2; needs `RESEND_API_KEY` and a verified hopserves.com in Resend, or nobody can sign in) |
 | Job updates: conditional on the version read (409 on a concurrent change); append-merged lists | Real |
 | Messages (`portal_messages`): staff ↔ Console, rep ↔ HQ, job chat rep ↔ member; who may read is enforced in SQL | Real, 4 s polling |
 | Door access: rep asks, the member approves in HOP Client, then the rep unlocks (`setDoorState`); a rep can't approve themselves | Real flow; the lock itself (Seam) is a `TODO(IT)` stub |

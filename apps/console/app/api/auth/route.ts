@@ -3,7 +3,7 @@ import { APP_ROLE } from "@/lib/app";
 
 export const dynamic = "force-dynamic";
 
-// GET ?action=me · POST ?action=login|logout|set-password|forgot — see packages/shared/src/server/auth.ts
+// GET ?action=me · POST ?action=login|verify-code|resend-code|logout|set-password|forgot — see packages/shared/src/server/auth.ts
 export const { GET, POST } = createAuthRoutes({
   role: APP_ROLE
 });

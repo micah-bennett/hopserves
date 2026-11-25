@@ -4,7 +4,7 @@ import { createProfileOnSignup } from "@/lib/server/profile";
 
 export const dynamic = "force-dynamic";
 
-// GET ?action=me|facilities · POST ?action=login|logout|signup|set-password|forgot
+// GET ?action=me|facilities · POST ?action=login|verify-code|resend-code|logout|signup|set-password|forgot
 // See packages/shared/src/server/auth.ts. ?action=facilities is public (ids and names only).
 export const { GET, POST } = createAuthRoutes({
   role: APP_ROLE,

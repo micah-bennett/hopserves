@@ -98,6 +98,17 @@ It's always safe to run twice: it only adds things, and it never deletes tables 
 `portal_customer_profiles`, `portal_requests.channel`; all 109 existing requests became
 `organization`, 275 accounts untouched). `npm run hop:check-separation` passed right after.
 
+## v2.2 (2026-11): emailed sign-in codes
+
+Every sign-in and every new sign-up now asks for a 6-digit code that HOP emails to the account.
+1. ✅ Done 2026-11-25. **Database update**: `npm run db:migrate` (adds `portal_login_codes` and
+   `portal_users.email_verified_at`; nothing deleted).
+2. **Email must work, or nobody can sign in.** Every Portal app needs `RESEND_API_KEY`, and in
+   resend.com → Domains, `hopserves.com` must show **Verified**. If emails stop, people see
+   "We couldn't send your sign-in code" and can't get in.
+3. The `@demo.hop` demo accounts can't receive email, so they can no longer sign in. Test with
+   real addresses instead.
+
 ## Demo accounts (in the live database until launch)
 
 On 2026-10-17 the operator chose to put the demo data in the live database instead of a separate

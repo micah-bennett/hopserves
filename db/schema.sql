@@ -314,3 +314,20 @@ CREATE TABLE IF NOT EXISTS portal_customer_profiles (
 ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'organization'
   CHECK (channel IN ('organization', 'concierge', 'instant'));
 CREATE INDEX IF NOT EXISTS portal_requests_channel_idx ON portal_requests (channel);
+
+-- v2.2 (2026-11): email sign-in codes. After a correct password (or a new sign-up), HOP emails a
+-- 6-digit code; the session starts only when it's entered. Only HMAC hashes are stored: the
+-- challenge (a random token the browser holds) and the code bound to that challenge.
+CREATE TABLE IF NOT EXISTS portal_login_codes (
+  challenge_hash TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES portal_users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  sends INT NOT NULL DEFAULT 1,
+  last_sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS portal_login_codes_user_idx ON portal_login_codes (user_id, created_at);
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;

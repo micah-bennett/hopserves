@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import { j } from "@hop/shared/client";
+import { j, type CodeChallenge } from "@hop/shared/client";
+import { CodeStep } from "@hop/shared/ui/CodeStep";
 import type { Facility, Unit } from "@hop/shared/types";
 
 const TITLES = ["ICU Nurse", "ER Doctor", "Imaging Tech", "Home Health Aide", "Respiratory Therapist", "Phlebotomist", "Unit Clerk", "Account Manager", "Operations Associate", "Engineer", "Front Desk"];
@@ -14,6 +15,7 @@ export function SignupForm() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
 
   // A colleague's invite link: /signup?ref=CODE. Linked right after sign-up (POST /api/me?action=referred).
   const [ref, setRef] = useState<string | null>(null);
@@ -42,14 +44,23 @@ export function SignupForm() {
     setBusy(true);
     setError(null);
     try {
-      await j("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) });
-      // Signed in now; credit the colleague who invited you. A bad or old code is simply ignored.
-      if (ref) await j("/api/me?action=referred", { method: "POST", body: JSON.stringify({ code: ref }) }).catch(() => {});
-      window.location.href = "/";
+      // Creates the account and emails a 6-digit code; they're signed in once it's entered.
+      setChallenge(await j<CodeChallenge>("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-      setBusy(false);
     }
+    setBusy(false);
+  }
+
+  async function afterVerified() {
+    // Signed in now; credit the colleague who invited you. A bad or old code is simply ignored.
+    if (ref) await j("/api/me?action=referred", { method: "POST", body: JSON.stringify({ code: ref }) }).catch(() => {});
+    window.location.href = "/";
+  }
+
+  if (challenge) {
+    // The account exists already, so "back" goes to sign-in, which sends a fresh code.
+    return <CodeStep challenge={challenge} onVerified={afterVerified} onRestart={() => (window.location.href = "/login")} />;
   }
 
   return (

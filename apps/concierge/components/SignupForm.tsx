@@ -1,13 +1,15 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { j } from "@hop/shared/client";
+import { j, type CodeChallenge } from "@hop/shared/client";
+import { CodeStep } from "@hop/shared/ui/CodeStep";
 import type { ConciergeAddress } from "@hop/shared/types";
 import { EMPTY_ADDRESS } from "@/lib/types";
 import { AddressFields, HearAboutUsSelect, hasAddress } from "./fields";
 
 /**
- * Self sign-up for individual concierge customers: POST /api/auth?action=signup (no facility),
- * then, already signed in, PUT /api/me with the optional address and "How did you hear about us?".
+ * Self sign-up for individual concierge customers: POST /api/auth?action=signup (no facility) emails
+ * a 6-digit code; once it's entered (CodeStep) they're signed in, and PUT /api/me saves the optional
+ * address and "How did you hear about us?".
  */
 export function SignupForm() {
   const [f, setF] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "" });
@@ -16,6 +18,7 @@ export function SignupForm() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
 
@@ -27,17 +30,24 @@ export function SignupForm() {
     setBusy(true);
     setError(null);
     try {
-      await j("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) });
+      setChallenge(await j<CodeChallenge>("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-      setBusy(false);
-      return;
     }
+    setBusy(false);
+  }
+
+  async function afterVerified() {
     // The account exists and you're signed in. The extras are best effort: you can add them in Profile.
     if (hasAddress(address) || hearAboutUs) {
       await j("/api/me", { method: "PUT", body: JSON.stringify({ ...(hasAddress(address) ? { address } : {}), ...(hearAboutUs ? { hearAboutUs } : {}) }) }).catch(() => {});
     }
     window.location.href = "/";
+  }
+
+  if (challenge) {
+    // The account exists already, so "back" goes to sign-in, which sends a fresh code.
+    return <CodeStep challenge={challenge} onVerified={afterVerified} onRestart={() => (window.location.href = "/login")} />;
   }
 
   return (

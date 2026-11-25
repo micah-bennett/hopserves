@@ -8,24 +8,24 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function layout(title: string, body: string, cta: { label: string; href: string }): string {
+function layout(title: string, body: string, cta?: { label: string; href: string }): string {
   return `<!doctype html><html><body style="margin:0;background:#f7f4ee;font-family:'DM Sans',Arial,sans-serif;color:#14213a">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border:1px solid #e4e8ef;border-radius:20px;padding:28px">
 <tr><td style="font-family:Montserrat,Arial,sans-serif;font-weight:800;font-size:20px;color:#012f6c;padding-bottom:12px">${esc(title)}</td></tr>
 <tr><td style="font-size:15px;line-height:1.55;color:#14213a">${body}</td></tr>
-<tr><td style="padding:22px 0 8px"><a href="${esc(cta.href)}" style="display:inline-block;background:#04a6a8;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:14px">${esc(cta.label)}</a></td></tr>
-<tr><td style="font-size:12px;color:#5d6b82;padding-top:10px">If the button doesn't work, paste this link into your browser:<br>${esc(cta.href)}</td></tr>
+${cta ? `<tr><td style="padding:22px 0 8px"><a href="${esc(cta.href)}" style="display:inline-block;background:#04a6a8;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:14px">${esc(cta.label)}</a></td></tr>
+<tr><td style="font-size:12px;color:#5d6b82;padding-top:10px">If the button doesn't work, paste this link into your browser:<br>${esc(cta.href)}</td></tr>` : ""}
 </table>
 <p style="font-size:12px;color:#5d6b82;margin-top:16px">HOP · Radical Hospitality for the people who keep healthcare running.</p>
 </td></tr></table></body></html>`;
 }
 
-async function send(to: string, subject: string, html: string, devLink: string): Promise<void> {
+async function send(to: string, subject: string, html: string, devNote: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[email:dev] RESEND_API_KEY not set. Would send "${subject}" to ${to}. Link: ${devLink}`);
+      console.log(`[email:dev] RESEND_API_KEY not set. Would send "${subject}" to ${to}. ${devNote}`);
       return;
     }
     throw new Error("RESEND_API_KEY is not configured");
@@ -36,10 +36,17 @@ async function send(to: string, subject: string, html: string, devLink: string):
 
 export async function sendInviteEmail(to: string, firstName: string, appName: string, link: string): Promise<void> {
   const body = `Hi ${esc(firstName)},<br><br>You've been added to the HOP ${esc(appName)}. Set your password to sign in. This link works once and expires in 7 days.`;
-  await send(to, `You're invited to the HOP ${appName}`, layout(`Welcome to HOP`, body, { label: "Set your password", href: link }), link);
+  await send(to, `You're invited to the HOP ${appName}`, layout(`Welcome to HOP`, body, { label: "Set your password", href: link }), `Link: ${link}`);
 }
 
 export async function sendPasswordResetEmail(to: string, link: string): Promise<void> {
   const body = `Someone asked to reset the password for this HOP account. If that was you, choose a new password below. The link expires in 30 minutes. If it wasn't you, you can ignore this email.`;
-  await send(to, "Reset your HOP password", layout("Reset your password", body, { label: "Choose a new password", href: link }), link);
+  await send(to, "Reset your HOP password", layout("Reset your password", body, { label: "Choose a new password", href: link }), `Link: ${link}`);
+}
+
+/** The 6-digit sign-in code. No link on purpose: the code only works in the browser that asked for it. */
+export async function sendLoginCodeEmail(to: string, code: string, appName: string): Promise<void> {
+  const big = `<div style="font-family:Montserrat,Arial,sans-serif;font-weight:800;font-size:32px;letter-spacing:8px;color:#012f6c;padding:14px 0">${esc(code)}</div>`;
+  const body = `Enter this code to sign in to the HOP ${esc(appName)}:${big}It expires in 10 minutes. HOP will never ask you for this code by phone or text. If you didn't try to sign in, someone may know your password: reset it from the sign-in page.`;
+  await send(to, `${code} is your HOP sign-in code`, layout("Your sign-in code", body), `Code: ${code}`);
 }

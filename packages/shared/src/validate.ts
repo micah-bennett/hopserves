@@ -159,6 +159,11 @@ export const setPasswordSchema = z.object({ token: z.string().min(20).max(200), 
 
 export const forgotSchema = z.object({ email });
 
+/** Email sign-in code step: the browser's challenge token plus the 6 digits from the email. */
+const challenge = z.string().regex(/^[a-f0-9]{64}$/, "Sign in again to get a new code.");
+export const verifyCodeSchema = z.object({ challenge, code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from the email.") });
+export const resendCodeSchema = z.object({ challenge });
+
 export const inviteSchema = z
   .object({
     email,

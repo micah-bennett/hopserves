@@ -1,16 +1,19 @@
 import "server-only";
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { parseCookie, stringifySetCookie } from "cookie";
 import bcrypt from "bcryptjs";
 import { APP_FOR_ROLE, appUrlFor } from "../brand";
 import type { Facility, PortalUser, Role, Unit } from "../types";
-import { customerSignupSchema, forgotSchema, loginSchema, setPasswordSchema, signupSchema } from "../validate";
+import { customerSignupSchema, forgotSchema, loginSchema, resendCodeSchema, setPasswordSchema, signupSchema, verifyCodeSchema } from "../validate";
 import { json, readJson, sql, zodMessage } from "./db";
-import { sendPasswordResetEmail } from "./email";
+import { sendLoginCodeEmail, sendPasswordResetEmail } from "./email";
 
 /*
- * Email + password auth for the four Portal apps. Ported from the old api/_lib/hopAuth.ts
+ * Email + password auth for the Portal apps, plus a 6-digit code emailed at every sign-in and
+ * sign-up (see "Email sign-in codes" below). Ported from the old api/_lib/hopAuth.ts
  * (git show 88ec07f:api/_lib/hopAuth.ts). One role per app; every route calls requireUser.
+ * Passwords are bcrypt hashes; session, reset and code tokens are stored only as HMAC-SHA256
+ * hashes keyed with SESSION_HASH_SECRET, so a database leak doesn't reveal a usable one.
  *
  * The cookie name includes the role (hop_portal_console, hop_portal_rep, ...). In production
  * each app has its own domain anyway, but on localhost cookies ignore the port, so one shared
@@ -21,6 +24,11 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MAX_FAILED_ATTEMPTS = 8;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 const TOKEN_TTL_MS = { invite: 7 * 24 * 60 * 60 * 1000, reset: 30 * 60 * 1000 } as const;
+const CODE_TTL_MS = 10 * 60 * 1000; // an emailed sign-in code works for 10 minutes
+const CODE_MAX_ATTEMPTS = 5; // wrong guesses before the code is dead (1 in 200,000 odds)
+const CODE_MAX_SENDS = 5; // sends (first + resends) per challenge
+const CODE_RESEND_GAP_MS = 30 * 1000;
+const CODE_MAX_PER_WINDOW = 6; // new challenges per user per 15 minutes, so the inbox can't be flooded
 
 export const cookieName = (role: Role) => `hop_portal_${role}`;
 
@@ -155,6 +163,62 @@ export async function consumePasswordToken(token: string): Promise<string | null
   return rows[0]?.user_id ?? null;
 }
 
+// ── Email sign-in codes ──────────────────────────────────────────────────────
+// A correct password (or a new sign-up) doesn't start a session. It creates a challenge: a random
+// token kept by the browser, and a 6-digit code emailed to the account. The session starts only when
+// both come back together (POST ?action=verify-code). Only HMAC hashes of either are stored.
+
+const codeHash = (challenge: string, code: string) => hashToken(`login-code:${challenge}:${code}`);
+const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
+
+function sameHash(a: string, b: string): boolean {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/** "jordan@example.com" → "jo•••@example.com", so the screen can say where the code went. */
+export function maskEmail(email: string): string {
+  const [name, domain] = email.split("@");
+  return `${name.slice(0, 2)}${"•".repeat(3)}@${domain}`;
+}
+
+/** Creates a challenge and emails its code. Throws a Response (429/503) the route returns as is. */
+async function startLoginCode(userId: string, email: string, appName: string): Promise<string> {
+  const recent = (await sql()`
+    SELECT COUNT(*)::int AS n FROM portal_login_codes WHERE user_id = ${userId} AND created_at > NOW() - INTERVAL '15 minutes'
+  `) as { n: number }[];
+  if ((recent[0]?.n ?? 0) >= CODE_MAX_PER_WINDOW) {
+    throw json({ error: "Too many sign-in codes asked for. Wait 15 minutes and try again." }, 429);
+  }
+  // One live code per person: asking again retires the previous one.
+  await sql()`UPDATE portal_login_codes SET used_at = NOW() WHERE user_id = ${userId} AND used_at IS NULL`;
+  const challenge = randomBytes(32).toString("hex");
+  const code = newCode();
+  const expiresAt = new Date(Date.now() + CODE_TTL_MS).toISOString();
+  await sql()`
+    INSERT INTO portal_login_codes (challenge_hash, user_id, code_hash, expires_at)
+    VALUES (${hashToken(challenge)}, ${userId}, ${codeHash(challenge, code)}, ${expiresAt})
+  `;
+  try {
+    await sendLoginCodeEmail(email, code, appName);
+  } catch (e) {
+    console.error("[auth] sign-in code email failed", e);
+    await sql()`DELETE FROM portal_login_codes WHERE challenge_hash = ${hashToken(challenge)}`;
+    throw json({ error: "We couldn't send your sign-in code. Try again in a minute." }, 503);
+  }
+  return challenge;
+}
+
+type CodeRow = { user_id: string; code_hash: string; attempts: number; sends: number; last_sent_at: string };
+
+async function liveChallenge(challenge: string): Promise<CodeRow | null> {
+  const rows = (await sql()`
+    SELECT user_id, code_hash, attempts, sends, last_sent_at FROM portal_login_codes
+    WHERE challenge_hash = ${hashToken(challenge)} AND used_at IS NULL AND expires_at > NOW()
+  `) as CodeRow[];
+  return rows[0] ?? null;
+}
+
 // ── Facilities (public list for the Staff sign-up form) ──────────────────────
 
 export async function listFacilitiesWithUnits(): Promise<(Facility & { units: Unit[] })[]> {
@@ -221,8 +285,74 @@ export function createAuthRoutes(opts: AuthOptions) {
       const app = APP_FOR_ROLE[row.role as Role];
       return json({ error: `This account is for the ${app.name}.`, appForRole: app.name, appUrl: appUrlFor(row.role as Role) }, 403);
     }
-    const cookie = await signIn(request, row.id);
-    return withCookie({ user: toUser(row) }, 200, cookie);
+    return await needCode(row.id, row.email, 200);
+  }
+
+  /** The password (or sign-up) was fine; now prove the email. Nothing is signed in yet. */
+  async function needCode(userId: string, email: string, status: number): Promise<Response> {
+    const challenge = await startLoginCode(userId, email, APP_FOR_ROLE[role].name);
+    return json({ needsCode: true, challenge, sentTo: maskEmail(email) }, status);
+  }
+
+  async function verifyCode(request: Request): Promise<Response> {
+    const parsed = verifyCodeSchema.safeParse(await readJson(request));
+    if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);
+    const { challenge, code } = parsed.data;
+    const row = await liveChallenge(challenge);
+    if (!row) return json({ error: "This code has expired. Sign in again to get a new one.", expired: true }, 400);
+    if (!sameHash(row.code_hash, codeHash(challenge, code))) {
+      const attempts = row.attempts + 1;
+      const dead = attempts >= CODE_MAX_ATTEMPTS;
+      await sql()`
+        UPDATE portal_login_codes SET attempts = ${attempts}, used_at = ${dead ? new Date().toISOString() : null}
+        WHERE challenge_hash = ${hashToken(challenge)}
+      `;
+      return dead
+        ? json({ error: "Too many wrong codes. Sign in again to get a new one.", expired: true }, 400)
+        : json({ error: "That code isn't right. Check the email and try again." }, 400);
+    }
+    // Single use, even if two requests race: only the one that flips used_at goes on.
+    const won = (await sql()`
+      UPDATE portal_login_codes SET used_at = NOW() WHERE challenge_hash = ${hashToken(challenge)} AND used_at IS NULL RETURNING user_id
+    `) as { user_id: string }[];
+    if (!won[0]) return json({ error: "This code has expired. Sign in again to get a new one.", expired: true }, 400);
+    const users = (await sql()`
+      UPDATE portal_users SET email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW()
+      WHERE id = ${row.user_id}
+      RETURNING id, email, role, first_name, last_name, phone, status, facility_id
+    `) as UserRow[];
+    const u = users[0];
+    if (!u || u.status !== "active" || u.role !== role) return json({ error: "This account can't sign in here." }, 403);
+    const cookie = await signIn(request, u.id);
+    return withCookie({ user: toUser(u) }, 200, cookie);
+  }
+
+  async function resendCode(request: Request): Promise<Response> {
+    const parsed = resendCodeSchema.safeParse(await readJson(request));
+    if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);
+    const { challenge } = parsed.data;
+    const row = await liveChallenge(challenge);
+    if (!row) return json({ error: "This code has expired. Sign in again to get a new one.", expired: true }, 400);
+    if (row.sends >= CODE_MAX_SENDS) return json({ error: "That's the most codes we can send for this sign-in. Sign in again.", expired: true }, 429);
+    if (Date.now() - new Date(row.last_sent_at).getTime() < CODE_RESEND_GAP_MS) {
+      return json({ error: "Give it 30 seconds before asking for another code." }, 429);
+    }
+    const users = (await sql()`SELECT email FROM portal_users WHERE id = ${row.user_id} AND status = 'active'`) as { email: string }[];
+    if (!users[0]) return json({ error: "This account can't sign in here." }, 403);
+    const code = newCode();
+    const expiresAt = new Date(Date.now() + CODE_TTL_MS).toISOString();
+    await sql()`
+      UPDATE portal_login_codes
+      SET code_hash = ${codeHash(challenge, code)}, attempts = 0, sends = sends + 1, last_sent_at = NOW(), expires_at = ${expiresAt}
+      WHERE challenge_hash = ${hashToken(challenge)}
+    `;
+    try {
+      await sendLoginCodeEmail(users[0].email, code, APP_FOR_ROLE[role].name);
+    } catch (e) {
+      console.error("[auth] sign-in code resend failed", e);
+      return json({ error: "We couldn't send your sign-in code. Try again in a minute." }, 503);
+    }
+    return json({ ok: true, sentTo: maskEmail(users[0].email) });
   }
 
   async function signup(request: Request): Promise<Response> {
@@ -246,8 +376,8 @@ export function createAuthRoutes(opts: AuthOptions) {
       await sql()`DELETE FROM portal_users WHERE id = ${user.id}`;
       throw e;
     }
-    const cookie = await signIn(request, user.id);
-    return withCookie({ user }, 201, cookie);
+    // Not signed in until the emailed code proves the address is theirs.
+    return await needCode(user.id, user.email, 201);
   }
 
   async function customerSignup(request: Request): Promise<Response> {
@@ -270,8 +400,8 @@ export function createAuthRoutes(opts: AuthOptions) {
       await sql()`DELETE FROM portal_users WHERE id = ${user.id}`;
       throw e;
     }
-    const cookie = await signIn(request, user.id);
-    return withCookie({ user }, 201, cookie);
+    // Not signed in until the emailed code proves the address is theirs.
+    return await needCode(user.id, user.email, 201);
   }
 
   async function setPassword(request: Request): Promise<Response> {
@@ -282,7 +412,8 @@ export function createAuthRoutes(opts: AuthOptions) {
     const hash = await hashPassword(parsed.data.password);
     const rows = (await sql()`
       UPDATE portal_users
-      SET password_hash = ${hash}, status = CASE WHEN status = 'invited' THEN 'active' ELSE status END, updated_at = NOW()
+      SET password_hash = ${hash}, status = CASE WHEN status = 'invited' THEN 'active' ELSE status END,
+          email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW()
       WHERE id = ${userId}
       RETURNING id, email, role, first_name, last_name, phone, status, facility_id
     `) as UserRow[];
@@ -327,6 +458,8 @@ export function createAuthRoutes(opts: AuthOptions) {
     try {
       const action = new URL(request.url).searchParams.get("action");
       if (action === "login") return await login(request);
+      if (action === "verify-code") return await verifyCode(request);
+      if (action === "resend-code") return await resendCode(request);
       if (action === "logout") {
         const header = request.headers.get("cookie");
         const token = header ? parseCookie(header)[cookieName(role)] : undefined;

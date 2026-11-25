@@ -16,9 +16,15 @@ export async function j<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** A correct password (or a new sign-up) answers with this; the session starts after verifyCode. */
+export type CodeChallenge = { needsCode: true; challenge: string; sentTo: string };
+
 export const authApi = {
   me: () => j<{ user: PortalUser }>("/api/auth?action=me"),
-  login: (email: string, password: string) => j<{ user: PortalUser }>("/api/auth?action=login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string) => j<CodeChallenge>("/api/auth?action=login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  verifyCode: (challenge: string, code: string) =>
+    j<{ user: PortalUser }>("/api/auth?action=verify-code", { method: "POST", body: JSON.stringify({ challenge, code }) }),
+  resendCode: (challenge: string) => j<{ ok: true; sentTo: string }>("/api/auth?action=resend-code", { method: "POST", body: JSON.stringify({ challenge }) }),
   logout: () => j<{ ok: true }>("/api/auth?action=logout", { method: "POST" }),
   forgot: (email: string) => j<{ ok: true }>("/api/auth?action=forgot", { method: "POST", body: JSON.stringify({ email }) }),
   setPassword: (token: string, password: string) =>
