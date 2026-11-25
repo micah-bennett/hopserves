@@ -212,12 +212,12 @@ The server enforces this with two zod schemas, `consolePatchJobSchema` and
 
 | Vercel project | Root Directory | Framework | Env vars |
 |---|---|---|---|
-| `hop_services` (www.hopserves.com) | `apps/site` | Vite | `DATABASE_URL`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `VITE_STAFF_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL`, `VITE_FACILITY_URL` |
-| `hop-staff` | `apps/staff` | Next.js | shared set ↓ + `APP_URL` |
-| `hop-console` | `apps/console` | Next.js | shared set + `APP_URL`, `STAFF_URL`, `REP_URL`, `FACILITY_URL` (for invite links) |
-| `hop-rep` | `apps/rep` | Next.js | shared set + `APP_URL`, optional `BLOB_READ_WRITE_TOKEN` |
-| `hop-facility` | `apps/facility` | Next.js | shared set + `APP_URL` |
-| `concierge_account` | `apps/concierge` | Next.js | shared set + `APP_URL` |
+| `hop_services` (www.hopserves.com) | `apps/site` | Vite | `DATABASE_URL`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `VITE_CLIENT_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL`, `VITE_FACILITY_URL`, `VITE_CONCIERGE_URL` (baked in at build: redeploy after changing) |
+| `hop-client` (hop-client.hopserves.com) | `apps/staff` | Next.js | shared set ↓ + `APP_URL` |
+| `hop-console` (hop-console.hopserves.com) | `apps/console` | Next.js | shared set + `APP_URL`, `STAFF_URL`, `REP_URL`, `FACILITY_URL` (for invite links) |
+| `hop-rep` (concierge-rep-app.hopserves.com) | `apps/rep` | Next.js | shared set + `APP_URL`, optional `BLOB_READ_WRITE_TOKEN` |
+| `hop-facility` (hop-facility.hopserves.com) | `apps/facility` | Next.js | shared set + `APP_URL` |
+| `concierge_account` (concierge.hopserves.com) | `apps/concierge` | Next.js | shared set + `APP_URL` |
 
 The shared set is `DATABASE_URL`, `SESSION_HASH_SECRET` and `RESEND_API_KEY`, the same values in
 every project.

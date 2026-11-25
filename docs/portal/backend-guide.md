@@ -132,29 +132,35 @@ ends or deploys stop.
 2. **Move leftover domains.** AY Projects → Domains → ⋯ next to each one → Move → Hop Services
    Team. The domains are "Third Party" (their DNS is at GoDaddy), so GoDaddy needs no change
    unless Vercel asks for a TXT verification record.
-3. **Add the app subdomains.** In each app project → Settings → Domains → Add:
-   `client.hopserves.com` (hop-client), `console.hopserves.com`, `rep.hopserves.com`,
-   `facility.hopserves.com`, `concierge.hopserves.com`. At GoDaddy → hopserves.com → DNS, add a
-   CNAME for each name (`client`, `console`, `rep`, `facility`, `concierge`) pointing to
-   `cname.vercel-dns.com`.
+3. ✅ Done 2026-11-24. **Add the app subdomains.** In each app project → Settings → Domains → Add:
+   `hop-client.hopserves.com` (hop-client), `hop-console.hopserves.com`,
+   `concierge-rep-app.hopserves.com` (hop-rep), `hop-facility.hopserves.com`,
+   `concierge.hopserves.com` (concierge_account), with matching DNS records at GoDaddy.
 4. **Point the links at the new addresses.** Update `APP_URL`, `CLIENT_URL`, `CONSOLE_URL`,
    `REP_URL`, `FACILITY_URL` and `CONCIERGE_URL` in all five apps, and the `VITE_*_URL` values
-   on `hop_services`. Redeploy every project.
+   on `hop_services` (see the table below; delete any old `STAFF_URL` / `VITE_STAFF_URL`).
+   Redeploy every project. The site's links are baked in when it builds, so until `hop_services`
+   is redeployed its HOP Portal page keeps opening the old `*.vercel.app` addresses.
 5. The old `*.vercel.app` addresses keep working, so nothing breaks while DNS catches up.
 6. **Email sender.** All emails now come from `requests@hopserves.com`. In resend.com → Domains,
    `hopserves.com` must show **Verified** (add the DNS records Resend lists at GoDaddy), or every
    email (contact-form alerts, invites, password resets) fails to send.
 
-## The Vercel projects (team: Hop Services Team; moving from AY Projects)
+## The Vercel projects (team: Hop Services Team)
 
 | Project | Folder (Root Directory) | Live address |
 |---|---|---|
 | `hop_services` | `apps/site` | https://www.hopserves.com (the public site) |
-| `hop-client` | `apps/staff` | https://hop-client.vercel.app (HOP Client; the old hop-staff.vercel.app address still works) |
-| `hop-console` | `apps/console` | https://hop-console.vercel.app |
-| `hop-rep` | `apps/rep` | https://hop-rep.vercel.app |
-| `hop-facility` | `apps/facility` | https://hop-facility.vercel.app |
-| `concierge_account` | `apps/concierge` | https://concierge.hopserves.com (once DNS is set; until then https://theconcierge-delta.vercel.app) |
+| `hop-client` | `apps/staff` | https://hop-client.hopserves.com (HOP Client) |
+| `hop-console` | `apps/console` | https://hop-console.hopserves.com |
+| `hop-rep` | `apps/rep` | https://concierge-rep-app.hopserves.com |
+| `hop-facility` | `apps/facility` | https://hop-facility.hopserves.com |
+| `concierge_account` | `apps/concierge` | https://concierge.hopserves.com |
+
+The old `*.vercel.app` addresses still work. Links like
+`conciergeaccount-24ehwyxd1-hop-services-team.vercel.app` (project name, a code, then
+`hop-services-team`) belong to one single deployment: they change on every deploy and sit behind
+the team's Vercel sign-in, so others see a sign-in wall or a blank page. Never share them.
 
 All six are connected to the GitHub repo. A push to `main` deploys to production, and a push to
 any other branch makes a preview. If a site deploy ever shows "Ready" but the live site doesn't
