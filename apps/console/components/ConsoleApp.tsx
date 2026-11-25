@@ -1,4 +1,5 @@
 "use client";
+import { proofSrc } from "@hop/shared/proof";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { JOB_TYPES, conciergeSummary } from "@hop/shared/brand";
@@ -514,9 +515,9 @@ function JobDetails({ j, reps, repName, onReassign }: { j: Job; reps: ConsoleRep
           <div>
             <p className="kick">Proof of completion</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {j.photos.length ? <div className="thumbs">{j.photos.map((p, i) => <img key={i} src={p} alt="Proof photo" />)}</div> : <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>No photo yet</p>}
+            {j.photos.length ? <div className="thumbs">{j.photos.map((p, i) => <img key={i} src={proofSrc(p)} alt="Proof photo" />)}</div> : <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>No photo yet</p>}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {j.sig ? <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 12, marginTop: 8, padding: 6 }}><img src={j.sig} alt="Signature" style={{ width: "100%", height: 80, objectFit: "contain" }} /><small style={{ fontSize: 11.5, color: "var(--muted)" }}>Signed by {j.signedBy || "recipient"}</small></div> : <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>No signature yet</p>}
+            {j.sig ? <div style={{ background: "#fff", border: "1px solid var(--line)", borderRadius: 12, marginTop: 8, padding: 6 }}><img src={proofSrc(j.sig)} alt="Signature" style={{ width: "100%", height: 80, objectFit: "contain" }} /><small style={{ fontSize: 11.5, color: "var(--muted)" }}>Signed by {j.signedBy || "recipient"}</small></div> : <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>No signature yet</p>}
             {canReassign && (
               <>
                 <p className="kick" style={{ marginTop: 12 }}>{j.status === "declined" ? "Send to another rep" : "Reassign"}</p>

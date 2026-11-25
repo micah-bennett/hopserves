@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { withAuth } from "@hop/shared/server/auth";
 import { json, readJson, zodMessage } from "@hop/shared/server/db";
+import { saveProofFile } from "@hop/shared/server/proofs";
 import { getJob } from "@hop/shared/server/store";
 import { APP_ROLE } from "@/lib/app";
 
@@ -15,11 +16,10 @@ const uploadSchema = z.object({
 });
 
 /**
- * POST /api/uploads { dataUrl, kind: "photo" | "signature", jobId } -> { url }
- * The job must be the signed-in rep's (404 otherwise) and not yet completed.
- * With BLOB_READ_WRITE_TOKEN set, stores the image in Vercel Blob and returns its URL.
- * Without it (demo), returns the data URL unchanged, so it's saved inline on the job.
- * TODO(IT): make proofs private (signed URLs) before real deliveries.
+ * POST /api/uploads { dataUrl, kind: "photo" | "signature", jobId } -> { url: "proof:<uuid>" }
+ * The job must be the signed-in rep's (404 otherwise) and still taking proof.
+ * The image is stored privately in portal_proof_files; there is no public URL. The reference is
+ * then saved on the job, and each app serves it at /api/proofs/<uuid> to people allowed to see it.
  */
 export const POST = withAuth(APP_ROLE, async (request, user) => {
   const parsed = uploadSchema.safeParse(await readJson(request, 2_900_000));
@@ -36,14 +36,6 @@ export const POST = withAuth(APP_ROLE, async (request, user) => {
   const bytes = Buffer.from(b64, "base64");
   if (bytes.length > MAX_IMAGE_BYTES) return json({ error: "Image is over 2 MB. Try again." }, 413);
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return json({ url: dataUrl, demo: true });
   const type = meta.slice(5, meta.indexOf(";"));
-  const ext = type.split("/")[1] === "jpeg" ? "jpg" : type.split("/")[1];
-  const { put } = await import("@vercel/blob");
-  const blob = await put(`proofs/${jobId}/${kind}-${Date.now()}.${ext}`, bytes, {
-    access: "public", // TODO(IT): private store + signed URLs.
-    contentType: type,
-    addRandomSuffix: true
-  });
-  return json({ url: blob.url });
+  return json({ url: await saveProofFile(job.id, kind, type, bytes, user.id) });
 });

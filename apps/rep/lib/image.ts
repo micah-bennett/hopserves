@@ -1,7 +1,7 @@
 /*
  * Client-side image helpers for photo proof. Phone cameras produce 3 to 12 MB files; the upload
- * cap is 2 MB and, without Blob storage, the PATCH carries every photo inline under Vercel's
- * 4.5 MB request limit. So photos are shrunk to about 1600px JPEG before they leave the phone.
+ * cap is 2 MB (each one is stored privately in the database). So photos are shrunk to about
+ * 1600px JPEG before they leave the phone.
  */
 
 const MAX_SIDE = 1600;

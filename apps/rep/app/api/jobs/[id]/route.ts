@@ -1,6 +1,7 @@
 import { withAuth } from "@hop/shared/server/auth";
 import { json, readJson, zodMessage } from "@hop/shared/server/db";
 import { notify } from "@hop/shared/server/integrations/push";
+import { proofsBelongToJob } from "@hop/shared/server/proofs";
 import { getJob, updateJob } from "@hop/shared/server/store";
 import { repPatchJobSchema } from "@hop/shared/validate";
 import { APP_ROLE } from "@/lib/app";
@@ -28,6 +29,8 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(APP_ROLE, asy
 
   const problem = checkRepPatch(before, patch);
   if (problem) return json({ error: problem }, 400);
+  const refs = [...(patch.photos ?? []), ...(patch.sig ? [patch.sig] : [])];
+  if (!(await proofsBelongToJob(refs, before.id))) return json({ error: "Upload proof for this job through the app." }, 400);
 
   const job = await updateJob(id, patch, user.id, { repId: user.id });
   if (!job) return json({ error: "Job not found" }, 404);

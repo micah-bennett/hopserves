@@ -6,6 +6,7 @@
   "description": "Code shared by the four HOP Portal apps: types, brand, validation, DB store, auth, UI",
   "exports": {
     "./brand": "./src/brand.ts",
+    "./proof": "./src/proof.ts",
     "./types": "./src/types.ts",
     "./validate": "./src/validate.ts",
     "./client": "./src/client.ts",

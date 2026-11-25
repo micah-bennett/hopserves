@@ -86,7 +86,7 @@ organization"; the final label/tagline is `[CONFIRM]` with leadership.
 ### Concierge Rep App (`apps/rep`)
 | Feature | Status |
 |---|---|
-| My jobs only, Accept/Pass, forward-only status steps, proof photo and signature | Real |
+| My jobs only, Accept/Pass, forward-only status steps, proof photo and signature | Real (stored privately in the database since v2.3) |
 | Online/offline (Console sees it), real rating, done today | Real |
 | Inbox: HOP HQ thread and job chats | Real |
 | Door: ask the member, wait for approval, unlock/lock logged | Real flow; Seam lock stub |
@@ -110,8 +110,7 @@ For hospitals and partner organizations. Counts HOP Client staff of that organiz
 
 ## Explicitly deferred (IT handoff; stubs + `TODO(IT)` only)
 
-Twilio masked calls and texts. Seam smart locks. Push alerts. An AI assistant. Realtime (polling for now). Private
-Blob with signed URLs. Maps and live location. Apple Health, Health Connect, Fitbit, Garmin,
+Twilio masked calls and texts. Seam smart locks. Push alerts. An AI assistant. Realtime (polling for now). Maps and live location. Apple Health, Health Connect, Fitbit, Garmin,
 Oura, WHOOP. Google/Outlook/Apple calendars. Unit scheduling systems. Alexa, Siri and Google
 Actions. Apple Watch, Live Activities. The "Saved with HOP" share target. Server-verified reward
 earn events. Native mobile apps.

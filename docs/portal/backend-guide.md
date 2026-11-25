@@ -109,6 +109,13 @@ Every sign-in and every new sign-up now asks for a 6-digit code that HOP emails 
 3. The `@demo.hop` demo accounts can't receive email, so they can no longer sign in. Test with
    real addresses instead.
 
+## v2.3 (2026-11): private proof photos and signatures
+
+Rep photos and signatures are now stored inside the database and only shown to people signed in
+who are allowed to see that job. There are no public links any more.
+1. ✅ Done 2026-11-25. **Database update**: `npm run db:migrate` (adds `portal_proof_files`).
+2. If `hop-rep` has a `BLOB_READ_WRITE_TOKEN` setting, delete it; nothing uses it now.
+
 ## Demo accounts (in the live database until launch)
 
 On 2026-10-17 the operator chose to put the demo data in the live database instead of a separate

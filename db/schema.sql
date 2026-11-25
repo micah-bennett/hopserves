@@ -331,3 +331,17 @@ CREATE TABLE IF NOT EXISTS portal_login_codes (
 );
 CREATE INDEX IF NOT EXISTS portal_login_codes_user_idx ON portal_login_codes (user_id, created_at);
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+-- v2.3 (2026-11): private proof files. Rep photos and signatures are stored here, never at a public
+-- URL. A job keeps "proof:<id>" references; each app serves /api/proofs/<id> only to a signed-in
+-- user who may see that job.
+CREATE TABLE IF NOT EXISTS portal_proof_files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id TEXT NOT NULL REFERENCES portal_jobs(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('photo', 'signature')),
+  content_type TEXT NOT NULL CHECK (content_type IN ('image/jpeg', 'image/png', 'image/webp')),
+  bytes BYTEA NOT NULL,
+  uploaded_by UUID REFERENCES portal_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS portal_proof_files_job_idx ON portal_proof_files (job_id);

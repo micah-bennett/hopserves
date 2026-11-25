@@ -1,4 +1,5 @@
 "use client";
+import { proofSrc } from "@hop/shared/proof";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, j as api, messagesApi, useJobs } from "@hop/shared/client";
 import { nowT } from "@hop/shared/time";
@@ -363,11 +364,11 @@ function JobDetail({ job: j, meId, update, replace, onCompleted }: { job: Job; m
           <h3>✓ Completed and verified</h3>
           <p>Proof sent to {first} and the concierge console.</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {j.photos[0] && <img src={j.photos[0]} alt="Completion photo" style={{ width: "100%", borderRadius: 12, marginTop: 10 }} />}
+          {j.photos[0] && <img src={proofSrc(j.photos[0])} alt="Completion photo" style={{ width: "100%", borderRadius: 12, marginTop: 10 }} />}
           {j.sig && (
             <div style={{ background: "#fff", borderRadius: 12, marginTop: 8, padding: 6 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={j.sig} alt="Signature" style={{ width: "100%", height: 90, objectFit: "contain" }} />
+              <img src={proofSrc(j.sig)} alt="Signature" style={{ width: "100%", height: 90, objectFit: "contain" }} />
               <small style={{ fontSize: 11.5, color: "var(--muted)" }}>Signed by {j.signedBy || "recipient"}</small>
             </div>
           )}
@@ -524,7 +525,7 @@ function JobDetail({ job: j, meId, update, replace, onCompleted }: { job: Job; m
           }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {j.photos.length > 0 && <div className="thumbs">{j.photos.map((p, i) => <img key={i} src={p} alt="Proof photo" />)}</div>}
+        {j.photos.length > 0 && <div className="thumbs">{j.photos.map((p, i) => <img key={i} src={proofSrc(p)} alt="Proof photo" />)}</div>}
         <div className="row between" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
           <div><b style={{ fontSize: 14 }}>✍️ Delivery signature</b><small style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{j.needSig ? "Required" : "Optional"} · {j.sig ? "Signed by " + (j.signedBy || "recipient") : "Not signed"}</small></div>
           {active && (
@@ -550,7 +551,7 @@ function JobDetail({ job: j, meId, update, replace, onCompleted }: { job: Job; m
           )}
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {j.sig && <img src={j.sig} alt="Signature" style={{ width: "100%", height: 80, objectFit: "contain", background: "var(--cream)", borderRadius: 12, marginTop: 8 }} />}
+        {j.sig && <img src={proofSrc(j.sig)} alt="Signature" style={{ width: "100%", height: 80, objectFit: "contain", background: "var(--cream)", borderRadius: 12, marginTop: 8 }} />}
         {j.status === "offer" && <p className="mock" style={{ textAlign: "left" }}>Accept the job to add proof.</p>}
       </div>
 

@@ -215,9 +215,19 @@ The server enforces this with two zod schemas, `consolePatchJobSchema` and
 
 - **Realtime**: client polling every 4 s (`useJobs`), as in the starter. Local edits are applied
   optimistically. Swapping to SSE/Pusher/Ably is a later step (`TODO(IT)` in `client.ts`).
-- **Photo and signature proof**: `POST /api/uploads` (Rep App). With `BLOB_READ_WRITE_TOKEN` set,
-  files go to Vercel Blob. Without it, the data URL is stored inline (demo only, 2 MB cap). Making
-  Blob private with signed URLs is required before real deliveries.
+- **Photo and signature proof (private, v2.3)**: `POST /api/uploads` (Rep App, the job must be the
+  rep's and still taking proof) stores the image in `portal_proof_files` (bytea, 2 MB cap) and
+  returns a reference, `proof:<uuid>`. Jobs only ever hold these references (`img` in
+  `validate.ts` rejects URLs and data URLs), and a rep's PATCH is refused unless every reference
+  was uploaded for that same job (`proofsBelongToJob`). There is no public URL: each app serves
+  `GET /api/proofs/<uuid>` through `createProofRoute` (`@hop/shared/server/proofs`) only to a
+  signed-in user allowed to see the job, otherwise 401/404:
+  - Rep App: jobs dispatched to that rep.
+  - Console: every job.
+  - HOP Client: the member's own request, once completed.
+
+  Screens turn a reference into that path with `proofSrc()` (`@hop/shared/proof`). Responses are
+  `Cache-Control: private`. Vercel Blob is no longer used.
 - **Masked calls (Twilio), smart locks (Seam), push (OneSignal)**: stubs in
   `@hop/shared/server/integrations` that log and return demo values. The Rep App's Call/Text
   buttons use `tel:`/`sms:` links until Twilio is wired.
@@ -229,7 +239,7 @@ The server enforces this with two zod schemas, `consolePatchJobSchema` and
 | `hop_services` (www.hopserves.com) | `apps/site` | Vite | `DATABASE_URL`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `VITE_CLIENT_URL`, `VITE_CONSOLE_URL`, `VITE_REP_URL`, `VITE_FACILITY_URL`, `VITE_CONCIERGE_URL` (baked in at build: redeploy after changing) |
 | `hop-client` (hop-client.hopserves.com) | `apps/staff` | Next.js | shared set ↓ + `APP_URL` |
 | `hop-console` (hop-console.hopserves.com) | `apps/console` | Next.js | shared set + `APP_URL`, `STAFF_URL`, `REP_URL`, `FACILITY_URL` (for invite links) |
-| `hop-rep` (concierge-rep-app.hopserves.com) | `apps/rep` | Next.js | shared set + `APP_URL`, optional `BLOB_READ_WRITE_TOKEN` |
+| `hop-rep` (concierge-rep-app.hopserves.com) | `apps/rep` | Next.js | shared set + `APP_URL` |
 | `hop-facility` (hop-facility.hopserves.com) | `apps/facility` | Next.js | shared set + `APP_URL` |
 | `concierge_account` (concierge.hopserves.com) | `apps/concierge` | Next.js | shared set + `APP_URL` |
 
@@ -251,7 +261,7 @@ every project.
   (5) people is suppressed **server-side**, not just hidden in the UI. No names, ever.
 - No watch, calendar or schedule data is collected until a privacy/HIPAA review is done. Those
   screens show sample data and "Connect" flows that only record consent intent.
-- Proof photos are private before any real job (signed Blob URLs).
+- Proof photos and signatures are private: stored in the database and served only to signed-in users allowed to see the job (done 2026-11).
 - **Data separation (2026-11).** Individual customer activity never reaches organization
   reporting. Concierge customers have no facility and no staff profile; instant requests have no
   account. On top of that, every Facility View query requires the requester's role to be `staff`

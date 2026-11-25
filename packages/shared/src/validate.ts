@@ -1,12 +1,10 @@
 import { z } from "zod";
 import { CONCIERGE_REQUEST_TYPES, JOB_CATS } from "./brand";
+import { PROOF_REF } from "./proof";
 
 const safe = (max = 400) => z.string().max(max).transform((s) => s.replace(/[<>`]/g, ""));
-/** Proof images: an inline data URL (demo) or a Vercel Blob URL. No other hosts. */
-const img = z
-  .string()
-  .max(3_000_000)
-  .refine((v) => /^(data:image\/(png|jpeg|webp);base64,|https:\/\/[a-z0-9-]+\.(public\.)?blob\.vercel-storage\.com\/)/.test(v), "Must be an image");
+/** Proof images: only a private file reference from POST /api/uploads ("proof:<uuid>"), never a URL. */
+const img = z.string().regex(PROOF_REF, "Upload the image first");
 const entry = z.tuple([safe(40), safe(600)]);
 const cat = z.enum(JOB_CATS);
 const status = z.enum(["offer", "accepted", "started", "in_progress", "completed", "declined"]);

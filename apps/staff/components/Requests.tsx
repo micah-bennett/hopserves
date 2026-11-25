@@ -1,4 +1,5 @@
 "use client";
+import { proofSrc } from "@hop/shared/proof";
 import { useState } from "react";
 import { j } from "@hop/shared/client";
 import { nowT } from "@hop/shared/time";
@@ -81,7 +82,7 @@ function Proof({ requestId }: { requestId: string }) {
     <div className="thumbs">
       {photos.map((p, i) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img key={i} src={p} alt={`Completion photo ${i + 1}`} />
+        <img key={i} src={proofSrc(p)} alt={`Completion photo ${i + 1}`} />
       ))}
     </div>
   );

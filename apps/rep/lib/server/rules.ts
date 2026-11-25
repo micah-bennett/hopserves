@@ -1,5 +1,6 @@
 import "server-only";
 import type { Job } from "@hop/shared/types";
+import { PROOF_REF } from "@hop/shared/proof";
 import { REP_STATUS_MOVES } from "@hop/shared/validate";
 
 /*
@@ -7,9 +8,8 @@ import { REP_STATUS_MOVES } from "@hop/shared/validate";
  * and anything unknown). See "Who may change what on a job" in docs/portal/architecture.md.
  */
 
-/** Photo / signature values must be an inline image or a file in our Vercel Blob store. */
-const BLOB_URL = /^https:\/\/[a-z0-9-]+\.(public\.)?blob\.vercel-storage\.com\//i;
-const okImage = (v: string) => v.startsWith("data:image/") || BLOB_URL.test(v);
+/** Photo / signature values must be private file references from POST /api/uploads ("proof:<uuid>"). */
+const okImage = (v: string) => PROOF_REF.test(v);
 
 /** Returns an error message (400) for a patch this rep may not make, or null if it's fine. */
 export function checkRepPatch(before: Job, patch: Partial<Job>): string | null {
