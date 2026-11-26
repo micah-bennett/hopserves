@@ -76,7 +76,7 @@ writes a new database column; without it, new requests and the Facility View wou
    Every line should say PASS. Run it again any time, for example before a hospital review.
 
 Instant requests from the public site land in the Concierge Console queue as "Instant request" and
-also email `NOTIFY_EMAIL` on the site project. Payment: the forms never take a full card number.
+also email `NOTIFY_EMAIL` on the site project (info@hopserves.com when it's not set). Payment: the forms never take a full card number.
 They take the method, the cardholder name and the last 4 digits, and the team calls to take
 payment. A real card checkout (for example Stripe) is not set up yet.
 
@@ -127,6 +127,17 @@ Facility View never stay signed in that long, and sign out after 30 minutes with
 2. Nothing else to set. Anyone already signed in to Console or Facility View is signed out after 30
    minutes without use; everyone else keeps their current session until it runs out.
 
+## Where notifications go (2026-11)
+
+Every HOP notification goes to **info@hopserves.com**: the public site's contact form and instant
+requests, and (new) an email for every request made in HOP Client, the Concierge Portal, the Rep
+App's safety button, Facility View unit support and reward redemptions. Replies to HOP's emails
+land there too. Sign-in codes and password resets come from no-reply and can't be answered.
+1. In Vercel → `hop_services` (the public site) → Settings → Environment Variables: if
+   `NOTIFY_EMAIL` is there with another address, change it to `info@hopserves.com` or delete it,
+   then redeploy. A value there wins over the built-in address.
+2. The Portal apps read `NOTIFY_EMAIL` too and use info@hopserves.com unless it is set there.
+
 ## Demo accounts (in the live database until launch)
 
 On 2026-10-17 the operator chose to put the demo data in the live database instead of a separate
@@ -171,7 +182,7 @@ ends or deploys stop.
    Redeploy every project. The site's links are baked in when it builds, so until `hop_services`
    is redeployed its HOP Portal page keeps opening the old `*.vercel.app` addresses.
 5. The old `*.vercel.app` addresses keep working, so nothing breaks while DNS catches up.
-6. **Email sender.** Emails come from `requests@hopserves.com` (replies go to micah@hvconcierge.com),
+6. **Email sender.** Emails come from `requests@hopserves.com` (replies go to info@hopserves.com),
    except sign-in codes and password resets, which come from `no-reply@hopserves.com` with no reply address and say
    "This email is not monitored". Nothing extra to set up: any address on a verified domain works. In resend.com → Domains,
    `hopserves.com` must show **Verified** (add the DNS records Resend lists at GoDaddy), or every

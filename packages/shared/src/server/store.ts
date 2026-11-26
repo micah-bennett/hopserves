@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import type { Facility, Job, JobStatus, LogEntry, MyRequest, PortalUser, RepSummary, RequestChannel, Role, StaffRequest, Unit, UserStatus } from "../types";
 import { toUser } from "./auth";
 import { json, sql } from "./db";
+import { sendNewRequestEmail } from "./email";
 
 /*
  * Jobs and requests keep the starter's full Job / StaffRequest objects in JSONB `data`; the
@@ -190,6 +191,11 @@ export async function createRequest(r: StaffRequest): Promise<StaffRequest> {
     INSERT INTO portal_requests (id, member_id, status, job_id, data, channel)
     VALUES (${r.id}, ${r.memberId || null}, ${r.status}, ${r.jobId ?? null}, ${JSON.stringify(r)}::jsonb, ${channelForSource(r.source)})
   `;
+  // Tell HOP's inbox (info@hopserves.com). Best effort: a failed email never loses the request,
+  // which is already in the Console queue. Requests the Console makes itself don't need an email.
+  if (r.source !== "console") {
+    await sendNewRequestEmail(r).catch((e) => console.error("[email] new-request notification failed", e));
+  }
   return r;
 }
 

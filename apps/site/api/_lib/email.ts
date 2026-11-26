@@ -6,7 +6,7 @@ import { inquiryOwnerNotificationTemplate } from './emailTemplates/inquiryOwnerN
 import { instantRequestOwnerNotificationTemplate } from './emailTemplates/instantRequestOwnerNotification.js'
 
 const FROM = 'HOP <requests@hopserves.com>'
-const NOTIFY_EMAIL = 'micah@hvconcierge.com'
+const NOTIFY_EMAIL = 'info@hopserves.com'
 
 function client(): { resend: Resend; notifyTo: string } {
   const apiKey = process.env.RESEND_API_KEY?.trim()

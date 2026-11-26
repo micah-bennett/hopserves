@@ -1,8 +1,14 @@
 import "server-only";
 import { Resend } from "resend";
+import { REQUEST_SOURCE_LABEL, appUrlFor, conciergeSummary } from "../brand";
+import type { StaffRequest } from "../types";
 
 const FROM = "HOP <requests@hopserves.com>";
-const REPLY_TO = "micah@hvconcierge.com";
+/** HOP's team inbox: every notification goes here, and replies to HOP emails land here. */
+export const HOP_INBOX = "info@hopserves.com";
+const REPLY_TO = HOP_INBOX;
+/** Where new-request notifications go. NOTIFY_EMAIL overrides it (same setting as the public site). */
+const notifyTo = () => process.env.NOTIFY_EMAIL?.trim() || HOP_INBOX;
 // Automated security mail (sign-in codes, password resets): nobody reads replies, so no reply-to and a no-reply sender.
 const NO_REPLY_FROM = "HOP <no-reply@hopserves.com>";
 const NOT_MONITORED = `<p style="font-size:12px;color:#5d6b82;margin:18px 0 0">This email is not monitored. Please don't reply.</p>`;
@@ -27,7 +33,7 @@ ${cta ? `<tr><td style="padding:22px 0 8px"><a href="${esc(cta.href)}" style="di
 </td></tr></table></body></html>`;
 }
 
-async function send(to: string, subject: string, html: string, devNote: string, opts: { noReply?: boolean } = {}): Promise<void> {
+async function send(to: string, subject: string, html: string, devNote: string, opts: { noReply?: boolean; replyTo?: string } = {}): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     if (process.env.NODE_ENV !== "production") {
@@ -37,7 +43,7 @@ async function send(to: string, subject: string, html: string, devNote: string, 
     throw new Error("RESEND_API_KEY is not configured");
   }
   const { error } = await new Resend(apiKey).emails.send(
-    opts.noReply ? { from: NO_REPLY_FROM, to, subject, html } : { from: FROM, to, replyTo: REPLY_TO, subject, html }
+    opts.noReply ? { from: NO_REPLY_FROM, to, subject, html } : { from: FROM, to, replyTo: opts.replyTo || REPLY_TO, subject, html }
   );
   if (error) throw new Error(`Email failed: ${error.message}`);
 }
@@ -57,4 +63,34 @@ export async function sendLoginCodeEmail(to: string, code: string, appName: stri
   const big = `<div style="font-family:Montserrat,Arial,sans-serif;font-weight:800;font-size:32px;letter-spacing:8px;color:#012f6c;padding:14px 0">${esc(code)}</div>`;
   const body = `Enter this code to sign in to the ${esc(hopName(appName))}:${big}It expires in 10 minutes. HOP will never ask you for this code by phone or text. If you didn't try to sign in, someone may know your password: reset it from the sign-in page.${NOT_MONITORED}`;
   await send(to, `${code} is your HOP sign-in code`, layout("Your sign-in code", body), `Code: ${code}`, { noReply: true });
+}
+
+/**
+ * Tells HOP's inbox a request just came in from a Portal app (HOP Client, Concierge Portal, Rep App
+ * safety alerts, Facility View unit support, reward redemptions). The public site's instant requests
+ * email from apps/site instead. Never includes payment details; replies go to the customer when we
+ * have their email.
+ */
+export async function sendNewRequestEmail(r: StaffRequest): Promise<void> {
+  const source = r.source ? REQUEST_SOURCE_LABEL[r.source] ?? r.source : "Request";
+  const rows: [string, string][] = [
+    ["From", [r.member, r.role].filter(Boolean).join(" · ")],
+    ["Came from", source],
+    ["Request", r.text]
+  ];
+  if (r.urgent) rows.push(["Urgent", "Yes"]);
+  if (r.window) rows.push(["When", r.window]);
+  if (r.details) rows.push(...conciergeSummary(r.details, { contact: true }));
+  const table = rows
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#5d6b82;white-space:nowrap;vertical-align:top">${esc(k)}</td><td style="padding:6px 0">${esc(v)}</td></tr>`)
+    .join("");
+  const consoleUrl = appUrlFor("console");
+  const html = layout(
+    r.urgent || r.source === "safety" ? `Urgent: new ${source.toLowerCase()} request` : `New ${source} request`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px">${table}</table>`,
+    consoleUrl ? { label: "Open the Concierge Console", href: consoleUrl } : undefined
+  );
+  const subject = `${r.urgent || r.source === "safety" ? "Urgent · " : ""}New ${source} request · ${r.member}`;
+  await send(notifyTo(), subject, html, `Request ${r.id}`, { replyTo: r.details?.contact?.email || undefined });
 }

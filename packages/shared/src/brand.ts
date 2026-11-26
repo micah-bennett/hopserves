@@ -1,4 +1,4 @@
-import type { ConciergeDetails } from "./types";
+import type { ConciergeDetails, RequestSource } from "./types";
 /** HOP brand tokens. Keep in sync with :root in styles/portal.css. */
 export const brand = {
   name: "HOP",
@@ -114,6 +114,23 @@ export function appUrlFor(role: keyof typeof APP_FOR_ROLE): string | null {
 }
 
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS);
+
+/** Where a request came from, as the Console and the new-request email name it. */
+export const REQUEST_SOURCE_LABEL: Record<RequestSource, string> = {
+  ask: "Ask",
+  clutch: "Clutch",
+  rescue: "Overtime Rescue",
+  voice: "Voice",
+  chat: "Chat",
+  welcome: "Welcome",
+  life: "Life",
+  facility: "Unit support",
+  console: "Console",
+  reward: "Reward redemption",
+  safety: "Safety",
+  concierge: "Concierge Portal",
+  instant: "Instant request"
+};
 
 /**
  * A concierge/instant request's details as label/value rows (Console detail panel, job notes, emails).

@@ -2,7 +2,7 @@
 import { proofSrc } from "@hop/shared/proof";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { JOB_TYPES, conciergeSummary } from "@hop/shared/brand";
+import { JOB_TYPES, REQUEST_SOURCE_LABEL, conciergeSummary } from "@hop/shared/brand";
 import { ApiError, j, useJobs } from "@hop/shared/client";
 import { nowT, nowTA } from "@hop/shared/time";
 import type { Job, JobCat, RequestSource, ThreadKind } from "@hop/shared/types";
@@ -18,21 +18,7 @@ const typeOf = (cat: string) => JOB_TYPES.find((t) => t[0] === cat);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
 /** Where a request came from, as a short label. */
-const SOURCE_LABEL: Record<RequestSource, string> = {
-  ask: "Ask",
-  clutch: "Clutch",
-  rescue: "Overtime Rescue",
-  voice: "Voice",
-  chat: "Chat",
-  welcome: "Welcome",
-  life: "Life",
-  facility: "Unit support",
-  console: "Console",
-  reward: "Reward redemption",
-  safety: "Safety",
-  concierge: "Concierge Portal",
-  instant: "Instant request"
-};
+const SOURCE_LABEL = REQUEST_SOURCE_LABEL;
 const sourceTag = (s: RequestSource | undefined) =>
   s === "safety" ? "c" : s === "reward" || s === "instant" ? "g" : s === "facility" || s === "concierge" ? "s" : "n";
 
