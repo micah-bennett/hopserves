@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { j, type CodeChallenge } from "@hop/shared/client";
+import { ApiError, j, type CodeChallenge } from "@hop/shared/client";
 import { CodeStep } from "@hop/shared/ui/CodeStep";
 import type { ConciergeAddress } from "@hop/shared/types";
 import { EMPTY_ADDRESS } from "@/lib/types";
@@ -18,12 +18,15 @@ export function SignupForm() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the email already belongs to the other self sign-up app, so the error can link there.
+  const [otherApp, setOtherApp] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    setOtherApp(null);
     if (f.password.length < 10) return setError("Use at least 10 characters for your password.");
     if (f.phone.trim().length < 7) return setError("Enter a phone number we can reach you on.");
     if (!consent) return setError("Please agree to HOP contacting you about your requests.");
@@ -33,6 +36,8 @@ export function SignupForm() {
       setChallenge(await j<CodeChallenge>("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+      const url = err instanceof ApiError ? err.body.appUrl : null;
+      setOtherApp(typeof url === "string" && url ? url.replace(/\/+$/, "") : null);
     }
     setBusy(false);
   }
@@ -95,6 +100,12 @@ export function SignupForm() {
         {error && (
           <p className="auth-error" role="alert">
             {error}
+            {otherApp && (
+              <>
+                {" "}
+                <a href={`${otherApp}/login`}>Go there</a>
+              </>
+            )}
           </p>
         )}
         <button className="btn p w" disabled={busy}>

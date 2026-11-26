@@ -70,6 +70,14 @@ bundle.
 - **Roles**: `staff`, `rep`, `console`, `facility_admin`, `customer`. One role per user, and one
   app per role. A rep who signs in on the Console gets "This account is for the Rep App" with a link to
   it, not a session.
+- **One email, one account** (unique index `portal_users_email_key`). The same person can't
+  have a HOP Client account and a Concierge Portal account under one email; they use a second
+  address. Sign-up on either self sign-up app checks this first: if the email belongs to the
+  *other* self sign-up app it says "This email is already used for the HOP Client / Concierge
+  Portal. Sign in there, or use a different email here." with a link; if it belongs to a team
+  account (rep, console, facility admin) the reply is generic, so sign-up can't be used to find
+  HOP's team. (Option kept open: one account per role per email, which needs the unique index
+  swapped. [CONFIRM] with leadership whether staff should also be personal customers.)
 - **How accounts are created**:
   - `staff`: self sign-up on HOP Client (`/signup`) with name, email, password, job title,
     facility and unit.

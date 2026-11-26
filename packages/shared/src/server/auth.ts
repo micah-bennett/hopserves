@@ -253,6 +253,24 @@ function appUrl(): string {
 export function createAuthRoutes(opts: AuthOptions) {
   const { role } = opts;
 
+  /**
+   * One email, one account, one role (portal_users_email_key). If sign-up hits an email that's
+   * already used, say where it lives so the person isn't sent to a sign-in that will refuse them.
+   * Only the self sign-up apps (HOP Client, Concierge Portal) are named; a team account (rep,
+   * console, facility admin) gets a generic line so sign-up can't be used to find HOP's team.
+   */
+  async function emailTaken(email: string): Promise<Response | null> {
+    const rows = (await sql()`SELECT role FROM portal_users WHERE lower(email) = ${email}`) as { role: Role }[];
+    const other = rows[0]?.role;
+    if (!other) return null;
+    if (other === role) return json({ error: "An account with this email already exists. Try signing in." }, 409);
+    if (other === "staff" || other === "customer") {
+      const app = APP_FOR_ROLE[other];
+      return json({ error: `This email is already used for the ${app.name}. Sign in there, or use a different email here.`, appForRole: app.name, appUrl: appUrlFor(other) }, 409);
+    }
+    return json({ error: "This email is already used for another HOP account. Use a different email here." }, 409);
+  }
+
   const withCookie = (body: unknown, status: number, cookie: string) => json(body, status, { "Set-Cookie": cookie });
 
   async function signIn(request: Request, userId: string) {
@@ -361,8 +379,8 @@ export function createAuthRoutes(opts: AuthOptions) {
     const input = parsed.data;
     const facility = (await sql()`SELECT 1 FROM portal_facilities WHERE id = ${input.facilityId}`) as unknown[];
     if (!facility.length) return json({ error: "Pick your organization from the list." }, 400);
-    const exists = (await sql()`SELECT 1 FROM portal_users WHERE lower(email) = ${input.email}`) as unknown[];
-    if (exists.length) return json({ error: "An account with this email already exists. Try signing in." }, 409);
+    const taken = await emailTaken(input.email);
+    if (taken) return taken;
     const hash = await hashPassword(input.password);
     const rows = (await sql()`
       INSERT INTO portal_users (email, password_hash, role, first_name, last_name, phone, status, facility_id)
@@ -384,8 +402,8 @@ export function createAuthRoutes(opts: AuthOptions) {
     const parsed = customerSignupSchema.safeParse(await readJson(request));
     if (!parsed.success) return json({ error: zodMessage(parsed.error) }, 400);
     const input = parsed.data;
-    const exists = (await sql()`SELECT 1 FROM portal_users WHERE lower(email) = ${input.email}`) as unknown[];
-    if (exists.length) return json({ error: "An account with this email already exists. Try signing in." }, 409);
+    const taken = await emailTaken(input.email);
+    if (taken) return taken;
     const hash = await hashPassword(input.password);
     // No facility: a customer belongs to no organization, so no Facility View can ever see them.
     const rows = (await sql()`

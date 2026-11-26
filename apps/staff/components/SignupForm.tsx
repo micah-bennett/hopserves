@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import { j, type CodeChallenge } from "@hop/shared/client";
+import { ApiError, j, type CodeChallenge } from "@hop/shared/client";
 import { CodeStep } from "@hop/shared/ui/CodeStep";
 import type { Facility, Unit } from "@hop/shared/types";
 
@@ -15,6 +15,8 @@ export function SignupForm() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the email already belongs to the other self sign-up app, so the error can link there.
+  const [otherApp, setOtherApp] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
 
   // A colleague's invite link: /signup?ref=CODE. Linked right after sign-up (POST /api/me?action=referred).
@@ -38,6 +40,7 @@ export function SignupForm() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    setOtherApp(null);
     if (f.password.length < 10) return setError("Use at least 10 characters for your password.");
     if (!f.facilityId || !f.unitId) return setError("Pick your organization and unit.");
     if (!consent) return setError("Please agree to the terms and privacy policy.");
@@ -48,6 +51,8 @@ export function SignupForm() {
       setChallenge(await j<CodeChallenge>("/api/auth?action=signup", { method: "POST", body: JSON.stringify({ ...f, consent: true }) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+      const url = err instanceof ApiError ? err.body.appUrl : null;
+      setOtherApp(typeof url === "string" && url ? url.replace(/\/+$/, "") : null);
     }
     setBusy(false);
   }
@@ -133,6 +138,12 @@ export function SignupForm() {
         {error && (
           <p className="auth-error" role="alert">
             {error}
+            {otherApp && (
+              <>
+                {" "}
+                <a href={`${otherApp}/login`}>Go there</a>
+              </>
+            )}
           </p>
         )}
         <button className="btn p w" disabled={busy}>
