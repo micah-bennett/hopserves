@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   if (await getSessionUserFromCookies(APP_ROLE)) redirect("/");
-  return <LoginScreen appName={APP_NAME} tagline={APP_TAGLINE} signupHref="/signup" />;
+  return <LoginScreen appName={APP_NAME} tagline={APP_TAGLINE} signupHref="/signup" allowRemember />;
 }

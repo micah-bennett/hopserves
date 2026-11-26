@@ -116,6 +116,17 @@ who are allowed to see that job. There are no public links any more.
 1. ✅ Done 2026-11-25. **Database update**: `npm run db:migrate` (adds `portal_proof_files`).
 2. If `hop-rep` has a `BLOB_READ_WRITE_TOKEN` setting, delete it; nothing uses it now.
 
+## v2.4 (2026-11): how long people stay signed in
+
+Sign-ins now last 12 hours, and closing the browser signs you out. On HOP Client, the Concierge
+Portal and the Rep App people can tick "Keep me signed in on this device" for 30 days. Console and
+Facility View never stay signed in that long, and sign out after 30 minutes without use.
+1. ✅ Done 2026-11-25. **Database update, before the new code goes live**: `npm run db:migrate` (adds
+   `portal_sessions.last_seen_at` and `portal_login_codes.remember`; nothing deleted). If the
+   code deploys first, nobody can sign in until the update runs.
+2. Nothing else to set. Anyone already signed in to Console or Facility View is signed out after 30
+   minutes without use; everyone else keeps their current session until it runs out.
+
 ## Demo accounts (in the live database until launch)
 
 On 2026-10-17 the operator chose to put the demo data in the live database instead of a separate

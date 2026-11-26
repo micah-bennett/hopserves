@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, authApi, type CodeChallenge } from "../client";
 import { CodeStep } from "./CodeStep";
 
@@ -7,16 +7,21 @@ import { CodeStep } from "./CodeStep";
  * Sign-in screen shared by all the Portal apps. A correct password emails a 6-digit code (CodeStep);
  * the session starts once it's entered, then it goes to `next` (default "/").
  * A user of another role gets "This account is for the …" with a link to their app.
+ * `allowRemember` shows "Keep me signed in on this device" (30 days instead of 12 hours); only the
+ * HOP Client, Concierge Portal and Rep App pass it, and the server enforces the same list.
+ * /login?idle=1 (from IdleGuard) explains that they were signed out for inactivity.
  */
 export function LoginScreen({
   appName,
   tagline,
   signupHref,
+  allowRemember = false,
   next = "/"
 }: {
   appName: string;
   tagline: string;
   signupHref?: string;
+  allowRemember?: boolean;
   next?: string;
 }) {
   const [email, setEmail] = useState("");
@@ -25,6 +30,11 @@ export function LoginScreen({
   const [error, setError] = useState<{ text: string; appUrl?: string | null } | null>(null);
   const [mode, setMode] = useState<"login" | "forgot" | "sent">("login");
   const [challenge, setChallenge] = useState<CodeChallenge | null>(null);
+  const [remember, setRemember] = useState(false);
+  const [idleNotice, setIdleNotice] = useState(false);
+  useEffect(() => {
+    setIdleNotice(new URLSearchParams(window.location.search).get("idle") === "1");
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -35,7 +45,7 @@ export function LoginScreen({
         await authApi.forgot(email);
         setMode("sent");
       } else {
-        setChallenge(await authApi.login(email, password));
+        setChallenge(await authApi.login(email, password, allowRemember && remember));
         setPassword("");
       }
     } catch (err) {
@@ -67,6 +77,11 @@ export function LoginScreen({
         <img src="/logo.png" alt="HOP" className="auth-logo" />
         <h1 className="disp">{mode === "login" ? appName : "Reset your password"}</h1>
         <p className="auth-sub">{mode === "login" ? tagline : mode === "forgot" ? "We'll email you a link to choose a new one." : "If that email has an account here, a reset link is on its way."}</p>
+        {idleNotice && mode === "login" && (
+          <p className="auth-sub" role="status" style={{ marginTop: -6 }}>
+            You were signed out after 30 minutes without activity. Sign in again to pick up where you left off.
+          </p>
+        )}
 
         {mode !== "sent" && (
           <>
@@ -78,6 +93,15 @@ export function LoginScreen({
               <label className="dl">
                 <span>Password</span>
                 <input className="field" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </label>
+            )}
+            {mode === "login" && allowRemember && (
+              <label className="row" style={{ gap: 10, alignItems: "flex-start", fontSize: 13.5, color: "var(--ink)" }}>
+                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>
+                  Keep me signed in on this device
+                  <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)" }}>For 30 days. Leave this off on a shared computer.</span>
+                </span>
               </label>
             )}
             {error && (

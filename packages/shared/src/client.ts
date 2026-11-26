@@ -21,7 +21,8 @@ export type CodeChallenge = { needsCode: true; challenge: string; sentTo: string
 
 export const authApi = {
   me: () => j<{ user: PortalUser }>("/api/auth?action=me"),
-  login: (email: string, password: string) => j<CodeChallenge>("/api/auth?action=login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string, remember = false) =>
+    j<CodeChallenge>("/api/auth?action=login", { method: "POST", body: JSON.stringify({ email, password, remember }) }),
   verifyCode: (challenge: string, code: string) =>
     j<{ user: PortalUser }>("/api/auth?action=verify-code", { method: "POST", body: JSON.stringify({ challenge, code }) }),
   resendCode: (challenge: string) => j<{ ok: true; sentTo: string }>("/api/auth?action=resend-code", { method: "POST", body: JSON.stringify({ challenge }) }),

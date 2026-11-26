@@ -18,9 +18,21 @@ import { sendLoginCodeEmail, sendPasswordResetEmail } from "./email";
  * The cookie name includes the role (hop_portal_console, hop_portal_rep, ...). In production
  * each app has its own domain anyway, but on localhost cookies ignore the port, so one shared
  * name would let signing in to the Console sign you out of the Rep App.
+ *
+ * How long a session lives (see "Session lifetime" below): 12 hours by default, in a cookie the
+ * browser drops when it quits. HOP Client, Concierge Portal and Rep App users can tick "Keep me
+ * signed in on this device" for 30 days. Console and Facility View never get 30 days, and also end
+ * after 30 minutes without activity (the IdleGuard component sends the activity heartbeat).
  */
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// ── Session lifetime ─────────────────────────────────────────────────────────
+const SHORT_TTL_MS = 12 * 60 * 60 * 1000; // one shift; the default for everyone
+const REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000; // "Keep me signed in on this device"
+export const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // Console and Facility View only
+/** Roles allowed the 30-day "Keep me signed in" option. Team desks with org data never are. */
+const CAN_REMEMBER: Record<Role, boolean> = { staff: true, customer: true, rep: true, console: false, facility_admin: false };
+/** Roles signed out after IDLE_TIMEOUT_MS without activity. */
+const IDLE_ROLES: Record<Role, boolean> = { staff: false, customer: false, rep: false, console: true, facility_admin: true };
 const MAX_FAILED_ATTEMPTS = 8;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 const TOKEN_TTL_MS = { invite: 7 * 24 * 60 * 60 * 1000, reset: 30 * 60 * 1000 } as const;
@@ -50,7 +62,8 @@ function isSecure(request: Request): boolean {
   return new URL(request.url).protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
 }
 
-function sessionCookie(request: Request, role: Role, token: string, maxAge: number): string {
+/** `maxAge` undefined makes a browser-session cookie (gone when the browser quits); 0 clears it. */
+function sessionCookie(request: Request, role: Role, token: string, maxAge: number | undefined): string {
   return stringifySetCookie({ name: cookieName(role), value: token, httpOnly: true, secure: isSecure(request), sameSite: "lax", path: "/", maxAge });
 }
 
@@ -82,9 +95,9 @@ export function toUser(row: UserRow): PortalUser {
 
 // ── Sessions ─────────────────────────────────────────────────────────────────
 
-export async function createSession(userId: string, request: Request): Promise<string> {
+export async function createSession(userId: string, request: Request, ttlMs: number): Promise<string> {
   const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  const expiresAt = new Date(Date.now() + ttlMs).toISOString();
   const ua = (request.headers.get("user-agent") || "").slice(0, 300);
   await sql()`INSERT INTO portal_sessions (token_hash, user_id, user_agent, expires_at) VALUES (${hashToken(token)}, ${userId}, ${ua}, ${expiresAt})`;
   return token;
@@ -93,12 +106,16 @@ export async function createSession(userId: string, request: Request): Promise<s
 async function userForToken(token: string | undefined | null): Promise<PortalUser | null> {
   if (!token) return null;
   const rows = (await sql()`
-    SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.phone, u.status, u.facility_id
+    SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.phone, u.status, u.facility_id, s.last_seen_at
     FROM portal_sessions s JOIN portal_users u ON u.id = s.user_id
     WHERE s.token_hash = ${hashToken(token)} AND s.expires_at > NOW()
-  `) as UserRow[];
+  `) as (UserRow & { last_seen_at: string })[];
   const row = rows[0];
   if (!row || row.status !== "active") return null;
+  if (IDLE_ROLES[row.role as Role] && Date.now() - new Date(row.last_seen_at).getTime() > IDLE_TIMEOUT_MS) {
+    await sql()`DELETE FROM portal_sessions WHERE token_hash = ${hashToken(token)}`;
+    return null;
+  }
   return toUser(row);
 }
 
@@ -183,7 +200,7 @@ export function maskEmail(email: string): string {
 }
 
 /** Creates a challenge and emails its code. Throws a Response (429/503) the route returns as is. */
-async function startLoginCode(userId: string, email: string, appName: string): Promise<string> {
+async function startLoginCode(userId: string, email: string, appName: string, remember: boolean): Promise<string> {
   const recent = (await sql()`
     SELECT COUNT(*)::int AS n FROM portal_login_codes WHERE user_id = ${userId} AND created_at > NOW() - INTERVAL '15 minutes'
   `) as { n: number }[];
@@ -196,8 +213,8 @@ async function startLoginCode(userId: string, email: string, appName: string): P
   const code = newCode();
   const expiresAt = new Date(Date.now() + CODE_TTL_MS).toISOString();
   await sql()`
-    INSERT INTO portal_login_codes (challenge_hash, user_id, code_hash, expires_at)
-    VALUES (${hashToken(challenge)}, ${userId}, ${codeHash(challenge, code)}, ${expiresAt})
+    INSERT INTO portal_login_codes (challenge_hash, user_id, code_hash, expires_at, remember)
+    VALUES (${hashToken(challenge)}, ${userId}, ${codeHash(challenge, code)}, ${expiresAt}, ${remember})
   `;
   try {
     await sendLoginCodeEmail(email, code, appName);
@@ -209,11 +226,11 @@ async function startLoginCode(userId: string, email: string, appName: string): P
   return challenge;
 }
 
-type CodeRow = { user_id: string; code_hash: string; attempts: number; sends: number; last_sent_at: string };
+type CodeRow = { user_id: string; code_hash: string; attempts: number; sends: number; last_sent_at: string; remember: boolean };
 
 async function liveChallenge(challenge: string): Promise<CodeRow | null> {
   const rows = (await sql()`
-    SELECT user_id, code_hash, attempts, sends, last_sent_at FROM portal_login_codes
+    SELECT user_id, code_hash, attempts, sends, last_sent_at, remember FROM portal_login_codes
     WHERE challenge_hash = ${hashToken(challenge)} AND used_at IS NULL AND expires_at > NOW()
   `) as CodeRow[];
   return rows[0] ?? null;
@@ -273,16 +290,19 @@ export function createAuthRoutes(opts: AuthOptions) {
 
   const withCookie = (body: unknown, status: number, cookie: string) => json(body, status, { "Set-Cookie": cookie });
 
-  async function signIn(request: Request, userId: string) {
-    const token = await createSession(userId, request);
+  /** Starts a session. 30 days only if they asked and this app allows it; otherwise 12 hours in a browser-session cookie. */
+  async function signIn(request: Request, userId: string, remember = false) {
+    const long = remember && CAN_REMEMBER[role];
+    const token = await createSession(userId, request, long ? REMEMBER_TTL_MS : SHORT_TTL_MS);
     await sql()`UPDATE portal_users SET failed_login_attempts = 0, locked_until = NULL, last_login_at = NOW(), updated_at = NOW() WHERE id = ${userId}`;
-    return sessionCookie(request, role, token, SESSION_TTL_MS / 1000);
+    return sessionCookie(request, role, token, long ? REMEMBER_TTL_MS / 1000 : undefined);
   }
 
   async function login(request: Request): Promise<Response> {
     const parsed = loginSchema.safeParse(await readJson(request));
     if (!parsed.success) return json({ error: BAD_LOGIN }, 400);
     const { email, password } = parsed.data;
+    const remember = parsed.data.remember === true && CAN_REMEMBER[role];
     const rows = (await sql()`
       SELECT id, email, role, first_name, last_name, phone, status, facility_id, password_hash, failed_login_attempts, locked_until
       FROM portal_users WHERE lower(email) = ${email}
@@ -303,12 +323,12 @@ export function createAuthRoutes(opts: AuthOptions) {
       const app = APP_FOR_ROLE[row.role as Role];
       return json({ error: `This account is for the ${app.name}.`, appForRole: app.name, appUrl: appUrlFor(row.role as Role) }, 403);
     }
-    return await needCode(row.id, row.email, 200);
+    return await needCode(row.id, row.email, 200, remember);
   }
 
   /** The password (or sign-up) was fine; now prove the email. Nothing is signed in yet. */
-  async function needCode(userId: string, email: string, status: number): Promise<Response> {
-    const challenge = await startLoginCode(userId, email, APP_FOR_ROLE[role].name);
+  async function needCode(userId: string, email: string, status: number, remember = false): Promise<Response> {
+    const challenge = await startLoginCode(userId, email, APP_FOR_ROLE[role].name, remember);
     return json({ needsCode: true, challenge, sentTo: maskEmail(email) }, status);
   }
 
@@ -341,7 +361,7 @@ export function createAuthRoutes(opts: AuthOptions) {
     `) as UserRow[];
     const u = users[0];
     if (!u || u.status !== "active" || u.role !== role) return json({ error: "This account can't sign in here." }, 403);
-    const cookie = await signIn(request, u.id);
+    const cookie = await signIn(request, u.id, row.remember);
     return withCookie({ user: toUser(u) }, 200, cookie);
   }
 
@@ -478,6 +498,14 @@ export function createAuthRoutes(opts: AuthOptions) {
       if (action === "login") return await login(request);
       if (action === "verify-code") return await verifyCode(request);
       if (action === "resend-code") return await resendCode(request);
+      if (action === "active") {
+        // Activity heartbeat from IdleGuard (Console, Facility View): keeps the session past the idle limit.
+        const header = request.headers.get("cookie");
+        const token = header ? parseCookie(header)[cookieName(role)] : undefined;
+        if (!token || !(await getSessionUser(request, role))) return json({ error: "Not signed in" }, 401);
+        await sql()`UPDATE portal_sessions SET last_seen_at = NOW() WHERE token_hash = ${hashToken(token)}`;
+        return json({ ok: true });
+      }
       if (action === "logout") {
         const header = request.headers.get("cookie");
         const token = header ? parseCookie(header)[cookieName(role)] : undefined;

@@ -84,7 +84,7 @@ const email = z.string().trim().toLowerCase().email().max(200);
 const password = z.string().min(10, "Use at least 10 characters").max(200);
 const name = z.string().trim().min(1).max(60).transform((s) => s.replace(/[<>`]/g, ""));
 
-export const loginSchema = z.object({ email, password: z.string().min(1).max(200) });
+export const loginSchema = z.object({ email, password: z.string().min(1).max(200), remember: z.boolean().optional() });
 
 export const signupSchema = z.object({
   email,

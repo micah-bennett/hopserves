@@ -94,7 +94,18 @@ bundle.
   cookie named after the app's role: `hop_portal_staff`, `hop_portal_console`, `hop_portal_rep`,
   `hop_portal_facility_admin` or `hop_portal_customer`. (On localhost every app shares one cookie jar, because cookies
   ignore the port, so a single name would let signing in to one app sign you out of another.) Only `HMAC-SHA256(token, SESSION_HASH_SECRET)` is stored, in
-  `portal_sessions`. The TTL is 30 days.
+  `portal_sessions`. **Lifetime (v2.4, 2026-11)**: 12 hours by default, in a browser-session
+  cookie (no `Max-Age`, so it's dropped when the browser quits; the 12-hour server expiry is the
+  real limit, since a restored browser can bring the cookie back). On HOP Client, Concierge Portal
+  and Rep App the sign-in screen has "Keep me signed in on this device" (`LoginScreen allowRemember`),
+  which makes it 30 days with a persistent cookie. The choice travels on the code challenge
+  (`portal_login_codes.remember`) until the code is verified. Console and Facility View never get
+  30 days (`CAN_REMEMBER` in `auth.ts`, enforced on the server whatever the client sends) and also
+  end after **30 minutes without activity**: `@hop/shared/ui/IdleGuard` (in their `(app)/layout.tsx`)
+  watches real input, sends `POST /api/auth?action=active` at most once a minute, and signs out to
+  `/login?idle=1` after 30 idle minutes; the server independently rejects (and deletes) any session
+  of those roles whose `portal_sessions.last_seen_at` is older than 30 minutes. Background polling
+  doesn't count as activity. Sign-up and set-password sessions are the 12-hour kind.
 - **Email sign-in codes (v2.2, 2026-11)**: a correct password never starts a session by itself.
   `?action=login` answers `{ needsCode, challenge, sentTo }` and Resend emails a 6-digit code;
   `?action=verify-code { challenge, code }` starts the session. Sign-up (HOP Client staff and

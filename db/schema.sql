@@ -345,3 +345,9 @@ CREATE TABLE IF NOT EXISTS portal_proof_files (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS portal_proof_files_job_idx ON portal_proof_files (job_id);
+
+-- v2.4 (2026-11): session lifetime. Sessions last 12 hours unless "Keep me signed in on this device"
+-- was ticked at sign-in (30 days; HOP Client, Concierge Portal and Rep App only). Console and
+-- Facility View sessions also end after 30 minutes without activity, measured from last_seen_at.
+ALTER TABLE portal_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE portal_login_codes ADD COLUMN IF NOT EXISTS remember BOOLEAN NOT NULL DEFAULT FALSE;
