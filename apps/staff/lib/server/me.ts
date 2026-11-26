@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { MIN_GROUP_SIZE, STATUS_LABEL, appUrlFor } from "@hop/shared/brand";
+import { MIN_GROUP_SIZE, STATUS_LABEL, appUrlFor, siteOrigin } from "@hop/shared/brand";
 import { json, sql } from "@hop/shared/server/db";
 import { createRequest, newId, setDoorState } from "@hop/shared/server/store";
 import type { JobStatus, PortalUser, StaffRequest } from "@hop/shared/types";
@@ -85,7 +85,7 @@ export async function ensureReferralCode(userId: string): Promise<string> {
 }
 
 function inviteUrl(code: string): string {
-  const base = (appUrlFor("staff") || process.env.APP_URL || "").replace(/\/+$/, "");
+  const base = appUrlFor("staff") || siteOrigin(process.env.APP_URL) || "";
   return `${base}/signup?ref=${code}`;
 }
 

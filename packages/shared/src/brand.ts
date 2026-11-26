@@ -93,10 +93,24 @@ export function catForRequestType(type: string): (typeof JOB_CATS)[number] {
  */
 export const MIN_GROUP_SIZE = 5;
 
+/**
+ * Just the site part of an app address: "https://hop-console.hopserves.com/login/" →
+ * "https://hop-console.hopserves.com". Links append their own path (/login, /set-password), so a
+ * setting pasted with a path on the end must not end up as /login/set-password. Null if blank or not a URL.
+ */
+export function siteOrigin(url: string | undefined | null): string | null {
+  const v = url?.trim();
+  if (!v) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`).origin;
+  } catch {
+    return null;
+  }
+}
+
 /** Base URL of the app a role signs in to, from env. STAFF_URL is the pre-rename name of CLIENT_URL. */
 export function appUrlFor(role: keyof typeof APP_FOR_ROLE): string | null {
-  const env = process.env[APP_FOR_ROLE[role].envKey] || (role === "staff" ? process.env.STAFF_URL : undefined);
-  return env?.trim().replace(/\/$/, "") || null;
+  return siteOrigin(process.env[APP_FOR_ROLE[role].envKey] || (role === "staff" ? process.env.STAFF_URL : undefined));
 }
 
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS);

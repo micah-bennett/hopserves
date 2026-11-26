@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { parseCookie, stringifySetCookie } from "cookie";
 import bcrypt from "bcryptjs";
-import { APP_FOR_ROLE, appUrlFor } from "../brand";
+import { APP_FOR_ROLE, appUrlFor, siteOrigin } from "../brand";
 import type { Facility, PortalUser, Role, Unit } from "../types";
 import { customerSignupSchema, forgotSchema, loginSchema, resendCodeSchema, setPasswordSchema, signupSchema, verifyCodeSchema } from "../validate";
 import { json, readJson, sql, zodMessage } from "./db";
@@ -264,7 +264,7 @@ type AuthOptions = {
 const BAD_LOGIN = "That email and password don't match.";
 
 function appUrl(): string {
-  return (process.env.APP_URL || "").replace(/\/+$/, "");
+  return siteOrigin(process.env.APP_URL) || "";
 }
 
 export function createAuthRoutes(opts: AuthOptions) {

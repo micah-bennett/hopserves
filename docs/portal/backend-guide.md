@@ -242,7 +242,8 @@ Vercel → project → Logs (or Deployments → a deployment → Runtime Logs).
 ## Still to do
 - v2.1 steps 2-5 above (database update, Concierge Portal project, `CONCIERGE_URL` /
   `VITE_CONCIERGE_URL`, separation check).
-- Creating the real first Concierge Console account (`npm run hop:create-console-admin`) and
-  removing the demo data (above) before real staff sign up.
+- ✅ First real Concierge Console account created 2026-11-25 (Abhinaya Yasa, work email). Every
+  other team account is invited from its Team screen.
+- Removing the demo data (above) before real staff sign up.
 - Retiring `theconcierge-staff` and the `staff-portal` branch (only with the operator's go-ahead;
   it can't be undone).

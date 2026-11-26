@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APP_FOR_ROLE } from "@hop/shared/brand";
+import { APP_FOR_ROLE, siteOrigin } from "@hop/shared/brand";
 import { createPasswordToken, withAuth } from "@hop/shared/server/auth";
 import { json, readJson, zodMessage } from "@hop/shared/server/db";
 import { sendInviteEmail } from "@hop/shared/server/email";
@@ -22,7 +22,7 @@ const DEV_URL: Record<TeamRole, string> = { console: "http://localhost:3002", re
 function appBase(role: TeamRole, request: Request): string | null {
   const env = role === "rep" ? process.env.REP_URL : role === "facility_admin" ? process.env.FACILITY_URL : process.env.APP_URL || process.env.CONSOLE_URL;
   const url = env?.trim() || (role === "console" ? new URL(request.url).origin : process.env.NODE_ENV !== "production" ? DEV_URL[role] : "");
-  return url ? url.replace(/\/+$/, "") : null;
+  return siteOrigin(url);
 }
 
 /** Creates a fresh invite token and emails it. Returns whether the email went out (dev logs the link instead). */
