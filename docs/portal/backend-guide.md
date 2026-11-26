@@ -160,7 +160,9 @@ ends or deploys stop.
    Redeploy every project. The site's links are baked in when it builds, so until `hop_services`
    is redeployed its HOP Portal page keeps opening the old `*.vercel.app` addresses.
 5. The old `*.vercel.app` addresses keep working, so nothing breaks while DNS catches up.
-6. **Email sender.** All emails now come from `requests@hopserves.com`. In resend.com → Domains,
+6. **Email sender.** Emails come from `requests@hopserves.com` (replies go to micah@hvconcierge.com),
+   except sign-in codes and password resets, which come from `no-reply@hopserves.com` with no reply address and say
+   "This email is not monitored". Nothing extra to set up: any address on a verified domain works. In resend.com → Domains,
    `hopserves.com` must show **Verified** (add the DNS records Resend lists at GoDaddy), or every
    email (contact-form alerts, invites, password resets) fails to send.
 
